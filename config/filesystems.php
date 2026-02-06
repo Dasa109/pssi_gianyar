@@ -32,7 +32,9 @@ return [
 
         'local' => [
             'driver' => 'local',
-            'root' => storage_path('app/private'),
+            // PERBAIKAN DI SINI:
+            // Hapus '/private'. Kembalikan ke 'app' agar Livewire terbaca normal.
+            'root' => storage_path('app'), 
             'serve' => true,
             'throw' => false,
             'report' => false,
@@ -45,6 +47,12 @@ return [
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
+        ],
+        // Tambahkan ini di bawah disk 'public' atau 'local'
+        'livewire_temp' => [
+            'driver' => 'local',
+            'root' => storage_path('app/livewire_temp'), // Folder khusus baru
+            'throw' => false,
         ],
 
         's3' => [

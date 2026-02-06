@@ -8,15 +8,16 @@ use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Illuminate\Support\Str;
+use App\Filament\Resources\Clubs\ClubResource\RelationManagers\PlayersRelationManager;
 
 class ClubResource extends Resource
 {
     protected static ?string $model = Club::class;
 
-    public static function getNavigationIcon(): ?string { return 'heroicon-o-shield-check'; }
-    public static function getNavigationGroup(): ?string { return 'Master Data'; }
-    public static function getNavigationLabel(): string { return 'Data Klub'; }
-    public static function getModelLabel(): string { return 'Klub'; }
+    protected static ?string $navigationIcon = 'heroicon-o-shield-check';
+    protected static ?string $navigationGroup = 'Master Data';
+    protected static ?string $navigationLabel = 'Data Klub';
+    protected static ?string $modelLabel = 'Klub';
     
     public static function getNavigationBadge(): ?string
     {
@@ -56,10 +57,11 @@ class ClubResource extends Resource
                             ->schema([
                                 Forms\Components\FileUpload::make('logo')
                                     ->label('Logo Klub')
-                                    ->image()
-                                    ->imageEditor()
+                                    ->disk('public')       // <--- PENTING: Tambahkan ini
                                     ->directory('clubs/logos')
                                     ->visibility('public')
+                                    ->image()
+                                    // ->imageEditor()     // Matikan dulu jika masih di Drive H: (opsional)
                                     ->columnSpanFull(),
 
                                 Forms\Components\TextInput::make('short_name')
@@ -73,7 +75,6 @@ class ClubResource extends Resource
 
                         Forms\Components\Section::make('Detail Lokasi')
                             ->schema([
-                                // PERBAIKAN DI SINI: Ganti ->icon() jadi ->prefixIcon()
                                 Forms\Components\TextInput::make('stadium_name')
                                     ->label('Stadion Homebase')
                                     ->prefixIcon('heroicon-m-map-pin'),
@@ -99,6 +100,7 @@ class ClubResource extends Resource
             ->columns([
                 Tables\Columns\ImageColumn::make('logo')
                     ->label('Logo')
+                    ->disk('public') // <--- WAJIB ADA: Agar tabel tahu ambil gambar di mana
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png')), 
 
@@ -133,6 +135,13 @@ class ClubResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            PlayersRelationManager::class,
+        ];
     }
 
     public static function getPages(): array

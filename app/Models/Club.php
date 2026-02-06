@@ -9,7 +9,6 @@ class Club extends Model
 {
     use HasFactory;
 
-    // Kita izinkan semua kolom ini untuk diisi data
     protected $fillable = [
         'name',
         'slug',
@@ -20,4 +19,24 @@ class Club extends Model
         'phone',
         'history',
     ];
+
+    // --- RELASI ---
+
+    public function players()
+    {
+        return $this->hasMany(Player::class);
+    }
+
+    // PERBAIKAN DI SINI:
+    // Gunakan string 'App\Models\Match' agar tidak bentrok dengan keyword PHP
+    
+    public function homeMatches()
+    {
+        return $this->hasMany('App\Models\Match', 'home_team_id');
+    }
+
+    public function awayMatches()
+    {
+        return $this->hasMany('App\Models\Match', 'away_team_id');
+    }
 }
