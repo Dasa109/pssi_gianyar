@@ -3,7 +3,7 @@
 <?php $__env->startSection('content'); ?>
 <div class="relative h-[85vh] flex items-center justify-center overflow-hidden">
     <div class="absolute inset-0 z-0">
-        <img src="https://images.unsplash.com/photo-1517466787929-bc90951d6dbb?q=80&w=1935&auto=format&fit=crop" 
+        <img src="https://static.promediateknologi.id/crop/0x0:0x0/0x0/webp/photo/p2/67/2024/02/10/Stadion-1206760733.jpg" 
              alt="Football Field" 
              class="w-full h-full object-cover opacity-40">
         <div class="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30"></div>

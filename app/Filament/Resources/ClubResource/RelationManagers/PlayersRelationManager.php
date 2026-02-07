@@ -7,6 +7,7 @@ use Filament\Forms\Form;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Hash; // PENTING: Untuk enkripsi password
 
 class PlayersRelationManager extends RelationManager
 {
@@ -18,40 +19,66 @@ class PlayersRelationManager extends RelationManager
     {
         return $form
             ->schema([
-                Forms\Components\FileUpload::make('photo')
-    ->label('Foto Pemain')
-    ->disk('public')           // Tetap pakai ini
-    ->directory('players')     // Masuk folder players
-    ->visibility('public')
-    ->image()                  // Nyalakan lagi (karena di Club bisa)
-    ->imageEditor()            // Nyalakan lagi (karena di Club bisa)
-    // ->preserveFilenames()   <-- HAPUS BARIS INI! (Biarkan Laravel memberi nama acak/hash)
-    ->columnSpanFull(),
+                // --- BAGIAN 1: DATA PROFIL ---
+                Forms\Components\Section::make('Profil Pemain')
+                    ->schema([
+                        Forms\Components\FileUpload::make('photo')
+                            ->label('Foto Pemain')
+                            ->disk('public')           // Simpan di storage/app/public
+                            ->directory('players')     // Masuk subfolder players
+                            ->visibility('public')     // Agar bisa dilihat browser
+                            ->image()                  // Validasi gambar
+                            ->imageEditor()            // Fitur crop/edit
+                            // ->preserveFilenames()   // KITA HAPUS (Biarkan Laravel memberi nama acak agar upload aman)
+                            ->columnSpanFull(),
 
-                Forms\Components\TextInput::make('name')
-                    ->label('Nama Lengkap')
-                    ->required()
-                    ->maxLength(255),
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nama Lengkap')
+                            ->required()
+                            ->maxLength(255),
 
-                Forms\Components\TextInput::make('number')
-                    ->label('No. Punggung')
-                    ->numeric()
-                    ->maxValue(99)
-                    ->required(),
+                        Forms\Components\TextInput::make('number')
+                            ->label('No. Punggung')
+                            ->numeric()
+                            ->maxValue(99)
+                            ->required(),
 
-                Forms\Components\Select::make('position')
-                    ->label('Posisi')
-                    ->options([
-                        'GK' => 'Goalkeeper (Kiper)',
-                        'DF' => 'Defender (Bek)',
-                        'MF' => 'Midfielder (Gelandang)',
-                        'FW' => 'Forward (Penyerang)',
-                    ])
-                    ->required(),
+                        Forms\Components\Select::make('position')
+                            ->label('Posisi')
+                            ->options([
+                                'GK' => 'Goalkeeper (Kiper)',
+                                'DF' => 'Defender (Bek)',
+                                'MF' => 'Midfielder (Gelandang)',
+                                'FW' => 'Forward (Penyerang)',
+                            ])
+                            ->required(),
 
-                Forms\Components\Toggle::make('is_captain')
-                    ->label('Kapten Tim?')
-                    ->inline(false),
+                        Forms\Components\Toggle::make('is_captain')
+                            ->label('Kapten Tim?')
+                            ->inline(false),
+                    ])->columns(2), // Tampilan 2 kolom
+
+                // --- BAGIAN 2: AKUN LOGIN (BARU) ---
+                Forms\Components\Section::make('Akun Portal Pemain')
+                    ->description('Isi email & password jika pemain ini diizinkan login.')
+                    ->schema([
+                        Forms\Components\TextInput::make('email')
+                            ->label('Email Login')
+                            ->email()
+                            ->unique(ignoreRecord: true) // Cek unik, tapi abaikan diri sendiri saat edit
+                            ->maxLength(255),
+
+                        Forms\Components\TextInput::make('password')
+                            ->label('Kata Sandi')
+                            ->password()
+                            ->revealable() // Agar admin bisa intip password saat ketik
+                            // HASHING OTOMATIS:
+                            ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+                            // JANGAN UPDATE PASSWORD KALAU KOSONG (Saat Edit):
+                            ->dehydrated(fn ($state) => filled($state))
+                            // WAJIB DIISI HANYA SAAT CREATE (Bukan Edit):
+                            ->required(fn (string $context): bool => $context === 'create'),
+                    ])->columns(2),
             ]);
     }
 
@@ -88,6 +115,16 @@ class PlayersRelationManager extends RelationManager
                         'FW' => 'danger',
                         default => 'gray',
                     }),
+                    
+                // Opsional: Tampilkan status punya akun atau tidak
+                Tables\Columns\IconColumn::make('email')
+                    ->label('Akun')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->getStateUsing(fn ($record) => !empty($record->email))
+                    ->color(fn ($state) => $state ? 'success' : 'danger')
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()

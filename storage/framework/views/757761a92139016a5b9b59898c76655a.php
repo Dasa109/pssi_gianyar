@@ -34,14 +34,16 @@
                 <div class="hidden md:block">
                     <ul class="flex space-x-8 font-heading font-medium text-sm tracking-widest uppercase">
                         <li><a href="<?php echo e(url('/')); ?>" class="hover:text-red-500 transition">Beranda</a></li>
-                        <li><a href="<?php echo e(route('clubs.index')); ?>" class="text-red-500 transition">Klub</a></li>
+                        <li><a href="<?php echo e(route('clubs.index')); ?>" class="hover:text-red-500 transition">Klub</a></li>
                         <li><a href="#" class="hover:text-red-500 transition">Jadwal</a></li>
                         <li><a href="#" class="hover:text-red-500 transition">Klasemen</a></li>
+                        <li><a href="#" class="hover:text-red-500 transition">Visi Misi</a></li>
+                        <li><a href="#" class="hover:text-red-500 transition">Lapangan</a></li>
                     </ul>
                 </div>
 
                 <div class="flex gap-4">
-                    <a href="/admin" class="px-5 py-2 text-xs font-bold uppercase tracking-widest border border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition -skew-x-12">
+                    <a href="/portal-pemain/login" class="px-5 py-2 text-xs font-bold uppercase tracking-widest border border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition -skew-x-12">
                         <span class="skew-x-12 block">Login Area</span>
                     </a>
                 </div>
