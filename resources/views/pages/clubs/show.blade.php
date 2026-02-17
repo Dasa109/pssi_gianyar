@@ -93,8 +93,8 @@
                         <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Juara</span>
                     </div>
                     <div class="text-center">
-                        {{-- Contoh menampilkan jumlah pemain dinamis --}}
-                        <span class="block text-3xl font-bold text-white mb-1">{{ $club->players->count() }}</span>
+                        {{-- PERBAIKAN 1: Filter jumlah hanya yang 'active' --}}
+                        <span class="block text-3xl font-bold text-white mb-1">{{ $club->players->where('status', 'active')->count() }}</span>
                         <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Pemain</span>
                     </div>
                     <div class="text-center">
@@ -116,10 +116,16 @@
                     </h2>
                 </div>
 
-                {{-- PERBAIKAN: Pastikan relasi 'players' ada di Model Club --}}
-                @if($club->players && $club->players->count() > 0)
+                {{-- PERBAIKAN 2: Filter Data Pemain --}}
+                @php
+                    // Saring pemain agar hanya yang 'active' yang muncul
+                    $activePlayers = $club->players->where('status', 'active');
+                @endphp
+
+                @if($activePlayers->count() > 0)
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-                        @foreach($club->players as $player)
+                        {{-- Loop menggunakan variabel hasil filter --}}
+                        @foreach($activePlayers as $player)
                             <div class="relative group overflow-hidden rounded-xl bg-zinc-800 border border-zinc-700/50 hover:border-red-600 hover:shadow-[0_0_20px_rgba(220,38,38,0.2)] transition-all duration-300">
                                 <div class="h-64 overflow-hidden bg-gradient-to-b from-zinc-700 to-zinc-900 relative">
                                     @if($player->photo)
@@ -158,7 +164,7 @@
                 @else
                     <div class="py-12 text-center border-2 border-dashed border-zinc-800 rounded-xl bg-zinc-900/50">
                         <svg class="mx-auto h-12 w-12 text-zinc-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
-                        <p class="text-zinc-500 font-medium">Belum ada pemain yang didaftarkan.</p>
+                        <p class="text-zinc-500 font-medium">Belum ada pemain resmi yang terdaftar.</p>
                     </div>
                 @endif
             </div>
