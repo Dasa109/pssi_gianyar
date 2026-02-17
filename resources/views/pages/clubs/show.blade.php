@@ -9,8 +9,9 @@
     <div class="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/60 to-transparent"></div>
     
     <div class="relative z-10 text-center px-4 flex flex-col items-center mt-10">
-        <div class="w-32 h-32 md:w-48 md:h-48 mb-6 drop-shadow-[0_0_50px_rgba(220,38,38,0.5)] animate-pulse">
+        <div class="w-32 h-32 md:w-48 md:h-48 mb-6 drop-shadow-[0_0_50px_rgba(220,38,38,0.5)]">
             @if($club->logo)
+                {{-- Gunakan asset storage yang benar --}}
                 <img src="{{ asset('storage/' . $club->logo) }}" alt="{{ $club->name }}" class="w-full h-full object-contain transform hover:scale-105 transition duration-500">
             @else
                 <div class="w-full h-full flex items-center justify-center bg-zinc-800 rounded-full border-4 border-zinc-700">
@@ -23,10 +24,11 @@
             {{ $club->name }}
         </h1>
         
-        @if($club->stadium_name)
+        {{-- PERBAIKAN: Gunakan $club->stadium (sesuai migrasi) --}}
+        @if($club->stadium)
             <div class="inline-flex items-center gap-2 bg-red-600/10 border border-red-600/30 px-6 py-2 rounded-full backdrop-blur-md">
                 <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                <span class="text-red-100 font-bold tracking-widest uppercase text-xs md:text-sm">{{ $club->stadium_name }}</span>
+                <span class="text-red-100 font-bold tracking-widest uppercase text-xs md:text-sm">{{ $club->stadium }}</span>
             </div>
         @endif
     </div>
@@ -36,7 +38,8 @@
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
         
         <div class="lg:col-span-4 space-y-6">
-            <div class="lg:sticky lg:top-24 space-y-6"> <div class="bg-zinc-800 border-l-4 border-red-600 p-6 shadow-xl">
+            <div class="lg:sticky lg:top-24 space-y-6"> 
+                <div class="bg-zinc-800 border-l-4 border-red-600 p-6 shadow-xl">
                     <h3 class="text-xl font-bold text-white mb-6 uppercase italic flex items-center gap-2">
                         <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         Informasi Klub
@@ -54,7 +57,7 @@
                         <div class="pb-2">
                             <span class="text-zinc-500 text-xs font-bold uppercase tracking-widest block mb-2">Alamat Markas</span>
                             <p class="text-zinc-300 text-sm leading-relaxed bg-zinc-900/50 p-3 rounded border border-white/5">
-                                {{ $club->address ?? '-' }}
+                                {{ $club->address ?? 'Alamat belum tersedia.' }}
                             </p>
                         </div>
                     </div>
@@ -67,7 +70,6 @@
         </div>
 
         <div class="lg:col-span-8 space-y-12">
-
             <div class="bg-zinc-800/30 p-8 rounded-2xl border border-white/5">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="h-8 w-1 bg-red-600 -skew-x-12"></div>
@@ -76,8 +78,13 @@
                     </h2>
                 </div>
                 
+                {{-- PERBAIKAN: Menggunakan $club->history --}}
                 <div class="prose prose-invert prose-red max-w-none text-zinc-400 leading-loose">
-                    {!! $club->history ?? '<p class="italic text-zinc-600">Belum ada sejarah yang ditulis oleh admin.</p>' !!}
+                    @if($club->history)
+                        {!! $club->history !!}
+                    @else
+                        <p class="italic text-zinc-600">Belum ada sejarah yang ditulis oleh admin.</p>
+                    @endif
                 </div>
 
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-8 border-t border-white/5">
@@ -86,8 +93,9 @@
                         <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Juara</span>
                     </div>
                     <div class="text-center">
-                        <span class="block text-3xl font-bold text-white mb-1">0</span>
-                        <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Laga</span>
+                        {{-- Contoh menampilkan jumlah pemain dinamis --}}
+                        <span class="block text-3xl font-bold text-white mb-1">{{ $club->players->count() }}</span>
+                        <span class="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Pemain</span>
                     </div>
                     <div class="text-center">
                         <span class="block text-3xl font-bold text-white mb-1">0</span>
@@ -108,7 +116,8 @@
                     </h2>
                 </div>
 
-                @if($club->players->count() > 0)
+                {{-- PERBAIKAN: Pastikan relasi 'players' ada di Model Club --}}
+                @if($club->players && $club->players->count() > 0)
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
                         @foreach($club->players as $player)
                             <div class="relative group overflow-hidden rounded-xl bg-zinc-800 border border-zinc-700/50 hover:border-red-600 hover:shadow-[0_0_20px_rgba(220,38,38,0.2)] transition-all duration-300">
@@ -122,7 +131,6 @@
                                     @endif
                                     
                                     <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60 group-hover:opacity-90 transition"></div>
-
                                     <span class="absolute top-3 right-3 text-[10px] font-bold px-2 py-1 rounded bg-red-600 text-white shadow-lg">
                                         {{ $player->position }}
                                     </span>
