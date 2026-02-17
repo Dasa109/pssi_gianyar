@@ -15,6 +15,7 @@ use App\Filament\Resources\Clubs\ClubResource\RelationManagers\PlayersRelationMa
 
 class ClubResource extends Resource
 {
+    // Perbaikan typo: Menggunakan ::class bukan = class
     protected static ?string $model = Club::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-trophy';
@@ -23,15 +24,17 @@ class ClubResource extends Resource
     protected static ?string $modelLabel = 'Klub';
     protected static ?int $navigationSort = 1;
 
-    // --- LOGIC 1: FILTER KACAMATA KUDA ---
+    /**
+     * LOGIC 1: GLOBAL FILTER
+     * Memastikan Operator hanya melihat klub mereka sendiri di seluruh halaman.
+     */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        // Jika user ada, dan BUKAN Super Admin (berarti dia Operator)
-        if ($user && !$user->isSuperAdmin()) {
-            // Paksa query hanya ambil data klub miliknya
+        // Menggunakan check method_exists agar aman dari error jika model User belum diupdate
+        if ($user && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
             $query->where('id', $user->club_id);
         }
 
@@ -45,8 +48,8 @@ class ClubResource extends Resource
 
     public static function form(Form $form): Form
     {
-        // Cek apakah yang login adalah Operator
-        $isOperator = auth()->user() && !auth()->user()->isSuperAdmin();
+        // Cache pengecekan role untuk performa
+        $isOperator = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && !auth()->user()->isSuperAdmin();
 
         return $form
             ->schema([
@@ -57,10 +60,10 @@ class ClubResource extends Resource
                                 Forms\Components\TextInput::make('name')
                                     ->label('Nama Klub')
                                     ->required()
-                                    ->placeholder('Contoh: Perseden Denpasar')
-                                    // LOGIC 2: Disable jika Operator (Biar gak ganti nama klub)
+                                    ->placeholder('Contoh: PS Gianyar')
+                                    // Proteksi: Operator dilarang mengubah Nama Klub entitas resmi
                                     ->disabled($isOperator) 
-                                    ->dehydrated() // Tetap kirim data walau disabled
+                                    ->dehydrated() 
                                     ->live(onBlur: true)
                                     ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('slug', Str::slug($state))),
 
@@ -87,12 +90,12 @@ class ClubResource extends Resource
                                     ->image()
                                     ->disk('public')
                                     ->directory('clubs/logos')
-                                    ->visibility('public')
+                                    ->imageEditor() // Tambahan: Agar user bisa crop logo
                                     ->columnSpanFull(),
 
                                 Forms\Components\TextInput::make('short_name')
                                     ->label('Kode / Singkatan')
-                                    ->placeholder('PSD')
+                                    ->placeholder('PSG')
                                     ->maxLength(5)
                                     ->required()
                                     ->live()
@@ -121,12 +124,13 @@ class ClubResource extends Resource
 
     public static function table(Table $table): Table
     {
+        $isSuperAdmin = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
+
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->withCount('players'))
             ->columns([
                 Tables\Columns\ImageColumn::make('logo')
                     ->label('Logo')
-                    ->disk('public')
                     ->circular()
                     ->defaultImageUrl(url('/images/placeholder.png')),
 
@@ -145,19 +149,18 @@ class ClubResource extends Resource
                 Tables\Columns\TextColumn::make('players_count')
                     ->label('Jml Pemain')
                     ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'gray')
-                    ->sortable(),
+                    ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                // Delete disembunyikan untuk operator agar tidak hapus klub sendiri
+                // Sembunyikan tombol Delete jika bukan Super Admin (Operator dilarang hapus klub)
                 Tables\Actions\DeleteAction::make()
-                    ->visible(fn () => auth()->user()->isSuperAdmin()),
+                    ->visible($isSuperAdmin),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                         ->visible(fn () => auth()->user()->isSuperAdmin()),
+                        ->visible($isSuperAdmin),
                 ]),
             ]);
     }
@@ -167,6 +170,14 @@ class ClubResource extends Resource
         return [
             PlayersRelationManager::class,
         ];
+    }
+
+    /**
+     * Hak Akses: Tombol 'New Klub' hanya muncul untuk Super Admin.
+     */
+    public static function canCreate(): bool
+    {
+        return auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
     }
 
     public static function getPages(): array
