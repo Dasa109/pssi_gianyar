@@ -11,7 +11,15 @@ class Club extends Model
 
     // 1. Sesuaikan Fillable dengan Database Migration terbaru
     protected $fillable = [
-    'name', 'slug', 'nickname', 'logo', 'stadium', 'address', 'phone', 'description', 'founded'
+    'name', 
+    'slug', 
+    'nickname', 
+    'logo', 
+    'stadium', // Pastikan bukan stadium_name
+    'address', 
+    'phone', 
+    'history', // Pastikan bukan description
+    'founded'
 ];
 
     // 2. Wajib ada agar URL /klub/{slug} bisa jalan (Route Model Binding)
