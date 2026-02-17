@@ -12,7 +12,50 @@ use App\Models\Player;
 class PlayerAuthController extends Controller
 {
     // =========================================================================
-    // BAGIAN 1: OTENTIKASI (LOGIN & LOGOUT)
+    // BAGIAN 1: REGISTRASI (PENDAFTARAN)
+    // =========================================================================
+
+    /**
+     * Menampilkan Form Registrasi
+     */
+    public function showRegisterForm()
+    {
+        return view('player.auth.register');
+    }
+
+    /**
+     * Proses Registrasi Pemain Baru
+     */
+    public function register(Request $request)
+    {
+        // 1. Validasi Input
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:players',
+            'password' => 'required|string|min:6|confirmed',
+            'position' => 'required|string',
+            'club_dummy' => 'nullable|string|max:255',
+        ]);
+
+        // 2. Simpan Data Pemain
+        $player = Player::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password), // Hash password manual
+            'position' => $request->position,
+            'club_dummy' => $request->club_dummy ?? 'Free Agent',
+        ]);
+
+        // 3. Auto Login
+        Auth::guard('player')->login($player);
+
+        // 4. Redirect ke Dashboard
+        return redirect()->route('player.dashboard')
+                         ->with('success', 'Registrasi berhasil! Selamat datang.');
+    }
+
+    // =========================================================================
+    // BAGIAN 2: OTENTIKASI (LOGIN & LOGOUT)
     // =========================================================================
 
     /**
@@ -20,7 +63,7 @@ class PlayerAuthController extends Controller
      */
     public function showLoginForm()
     {
-        return view('player.login');
+        return view('player.auth.login'); // Pastikan nama file view sesuai
     }
 
     /**
@@ -34,15 +77,15 @@ class PlayerAuthController extends Controller
             'password' => ['required'],
         ]);
 
-        // 2. Coba Login menggunakan Guard 'player'
+        // 2. Coba Login (Ingat: Gunakan guard 'player')
         if (Auth::guard('player')->attempt($credentials)) {
             $request->session()->regenerate();
             
-            // Redirect ke dashboard jika sukses
-            return redirect()->intended(route('player.dashboard'));
+            return redirect()->intended(route('player.dashboard'))
+                             ->with('success', 'Login berhasil!');
         }
 
-        // 3. Jika Gagal, kembalikan ke halaman login dengan error
+        // 3. Jika Gagal
         return back()->withErrors([
             'email' => 'Email atau password salah.',
         ])->onlyInput('email');
@@ -58,12 +101,13 @@ class PlayerAuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('player.login');
+        return redirect()->route('player.login')
+                         ->with('success', 'Anda telah logout.');
     }
 
 
     // =========================================================================
-    // BAGIAN 2: HALAMAN UTAMA (DASHBOARD)
+    // BAGIAN 3: HALAMAN UTAMA (DASHBOARD)
     // =========================================================================
 
     /**
@@ -77,7 +121,7 @@ class PlayerAuthController extends Controller
 
 
     // =========================================================================
-    // BAGIAN 3: PENGATURAN PROFIL (EDIT & UPDATE)
+    // BAGIAN 4: PENGATURAN PROFIL (EDIT & UPDATE)
     // =========================================================================
 
     /**
@@ -90,7 +134,7 @@ class PlayerAuthController extends Controller
     }
 
     /**
-     * Proses Simpan Perubahan Profil (Foto & Password)
+     * Proses Simpan Perubahan Profil
      */
     public function updateProfile(Request $request)
     {
@@ -98,33 +142,39 @@ class PlayerAuthController extends Controller
 
         // 1. Validasi Input
         $request->validate([
-            'photo' => 'nullable|image|max:2048', // Maksimal 2MB, harus gambar
-            'password' => 'nullable|min:6|confirmed', // Min 6 huruf, harus sama dengan password_confirmation
+            'name' => 'required|string|max:255',
+            'position' => 'required|string',
+            'club_dummy' => 'nullable|string|max:255',
+            'photo' => 'nullable|image|max:2048', // Max 2MB
+            'password' => 'nullable|min:6|confirmed', // Opsional
         ]);
 
-        // 2. Logika Update Foto
+        // 2. Update Data Teks (Nama, Posisi, Klub)
+        // Kita gunakan forceFill atau update manual
+        $player->name = $request->name;
+        $player->position = $request->position;
+        $player->club_dummy = $request->club_dummy;
+
+        // 3. Logika Update Foto
         if ($request->hasFile('photo')) {
-            // A. Hapus foto lama jika ada (agar server tidak penuh)
+            // Hapus foto lama jika bukan default/kosong
             if ($player->photo && Storage::disk('public')->exists($player->photo)) {
                 Storage::disk('public')->delete($player->photo);
             }
             
-            // B. Simpan foto baru ke folder 'players' di storage public
+            // Simpan foto baru
             $path = $request->file('photo')->store('players', 'public');
-            
-            // C. Update path di database
             $player->photo = $path;
         }
 
-        // 3. Logika Ganti Password (Hanya jika kolom diisi)
+        // 4. Logika Ganti Password (Hanya jika diisi)
         if ($request->filled('password')) {
             $player->password = Hash::make($request->password);
         }
 
-        // 4. Simpan ke Database
+        // 5. Simpan Perubahan
         $player->save();
 
-        // 5. Kembali ke halaman sebelumnya dengan pesan sukses
-        return back()->with('success', 'Profil Anda berhasil diperbarui!');
+        return back()->with('success', 'Profil berhasil diperbarui!');
     }
 }

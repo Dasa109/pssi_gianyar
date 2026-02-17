@@ -1,55 +1,55 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ClubController;       // Pastikan file Controller ini ada
-use App\Http\Controllers\PlayerAuthController; // Pastikan file Controller ini ada
+use App\Http\Controllers\ClubController;       
+use App\Http\Controllers\PlayerAuthController; 
 
-// --- 1. Halaman Depan (Landing Page) ---
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+*/
+
+// --- 1. HALAMAN PUBLIK ---
 Route::get('/', function () {
     return view('welcome');
 });
 
-// --- 2. Halaman Publik Klub ---
-// (Pastikan kamu sudah membuat ClubController, jika belum, comment dulu 2 baris ini agar tidak error)
+// Route Klub
 Route::get('/klub', [ClubController::class, 'index'])->name('clubs.index');
+
+// ✅ FIX: Baris ini sudah saya aktifkan (uncomment) agar detail klub bisa dibuka
 Route::get('/klub/{slug}', [ClubController::class, 'show'])->name('clubs.show');
 
 
-// --- 3. PORTAL PEMAIN (LOGIN & DASHBOARD) ---
-Route::prefix('portal-pemain')->group(function () {
+// --- 2. PORTAL PEMAIN (AUTH SYSTEM) ---
+Route::prefix('portal-pemain')->name('player.')->group(function () {
     
-    // FIX PENTING: Jika akses /portal-pemain saja, lempar ke /portal-pemain/login
+    // Redirect: Jika user akses '/portal-pemain', lempar ke halaman login
     Route::redirect('/', '/portal-pemain/login');
-    
-    // A. Halaman Login (Hanya untuk tamu/belum login)
+
+    // A. TAMU (Belum Login)
     Route::middleware('guest:player')->group(function () {
-        Route::get('login', [PlayerAuthController::class, 'showLoginForm'])->name('player.login');
-        Route::post('login', [PlayerAuthController::class, 'login'])->name('player.login.submit');
+        // Login
+        Route::get('login', [PlayerAuthController::class, 'showLoginForm'])->name('login');
+        Route::post('login', [PlayerAuthController::class, 'login'])->name('login.submit');
+
+        // Registrasi
+        Route::get('register', [PlayerAuthController::class, 'showRegisterForm'])->name('register');
+        Route::post('register', [PlayerAuthController::class, 'register'])->name('register.store');
     });
 
-    // B. Halaman Dashboard (Hanya untuk pemain yang sudah login)
+    // B. MEMBER (Sudah Login)
     Route::middleware('auth:player')->group(function () {
-        Route::get('dashboard', [PlayerAuthController::class, 'dashboard'])->name('player.dashboard');
-        Route::post('logout', [PlayerAuthController::class, 'logout'])->name('player.logout');
+        // Dashboard Utama
+        Route::get('dashboard', [PlayerAuthController::class, 'dashboard'])->name('dashboard');
+        
+        // Logout
+        Route::post('logout', [PlayerAuthController::class, 'logout'])->name('logout');
 
-        // ... di dalam Route::middleware('auth:player')->group(function () { ...
-
-    Route::get('dashboard', [PlayerAuthController::class, 'dashboard'])->name('player.dashboard');
-    Route::post('logout', [PlayerAuthController::class, 'logout'])->name('player.logout');
-
-    // --- TAMBAHKAN INI (FITUR EDIT PROFIL) ---
-    Route::get('profil/edit', [PlayerAuthController::class, 'editProfile'])->name('player.edit');
-    Route::put('profil/update', [PlayerAuthController::class, 'updateProfile'])->name('player.update');
-
-// ... tutup group// ... di dalam Route::middleware('auth:player')->group(function () { ...
-
-    Route::get('dashboard', [PlayerAuthController::class, 'dashboard'])->name('player.dashboard');
-    Route::post('logout', [PlayerAuthController::class, 'logout'])->name('player.logout');
-
-    // --- TAMBAHKAN INI (FITUR EDIT PROFIL) ---
-    Route::get('profil/edit', [PlayerAuthController::class, 'editProfile'])->name('player.edit');
-    Route::put('profil/update', [PlayerAuthController::class, 'updateProfile'])->name('player.update');
-
-// ... tutup group
+        // Edit Profil
+        Route::get('profil/edit', [PlayerAuthController::class, 'editProfile'])->name('edit');
+        Route::put('profil/update', [PlayerAuthController::class, 'updateProfile'])->name('update');
     });
+
 });

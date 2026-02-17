@@ -9,16 +9,16 @@ class Club extends Model
 {
     use HasFactory;
 
+    // 1. Sesuaikan Fillable dengan Database Migration terbaru
     protected $fillable = [
-        'name',
-        'slug',
-        'short_name',
-        'logo',
-        'stadium_name',
-        'address',
-        'phone',
-        'history',
-    ];
+    'name', 'slug', 'nickname', 'logo', 'stadium', 'address', 'phone', 'description', 'founded'
+];
+
+    // 2. Wajib ada agar URL /klub/{slug} bisa jalan (Route Model Binding)
+    public function getRouteKeyName()
+    {
+        return 'slug';
+    }
 
     // --- RELASI ---
 
@@ -27,9 +27,9 @@ class Club extends Model
         return $this->hasMany(Player::class);
     }
 
-    // PERBAIKAN DI SINI:
-    // Gunakan string 'App\Models\Match' agar tidak bentrok dengan keyword PHP
-    
+    // Relasi ke Pertandingan (Match)
+    // Kita gunakan string full class 'App\Models\Match' 
+    // karena 'Match' adalah reserved keyword di PHP 8
     public function homeMatches()
     {
         return $this->hasMany('App\Models\Match', 'home_team_id');

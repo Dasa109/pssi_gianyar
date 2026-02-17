@@ -11,6 +11,8 @@
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <?php echo app('Illuminate\Foundation\Vite')(['resources/css/app.css', 'resources/js/app.js']); ?>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -53,14 +55,14 @@
                 <div class="flex items-center gap-3 md:gap-4 z-50 relative">
                     
                     <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(Auth::guard('player')->check()): ?>
-                        <a href="<?php echo e(route('player.dashboard')); ?>" class="px-3 md:px-5 py-1.5 md:py-2 text-[10px] md:text-xs font-bold uppercase tracking-widest border border-green-600 text-green-500 hover:bg-green-600 hover:text-white transition -skew-x-12 flex items-center gap-2">
+                        <a href="<?php echo e(route('player.dashboard')); ?>" class="hidden md:flex px-3 md:px-5 py-1.5 md:py-2 text-[10px] md:text-xs font-bold uppercase tracking-widest border border-green-600 text-green-500 hover:bg-green-600 hover:text-white transition -skew-x-12 items-center gap-2">
                             <span class="skew-x-12 block">
-                                <span class="hidden sm:inline">Hi, <?php echo e(Str::limit(Auth::guard('player')->user()->name, 8)); ?></span>
-                                <span class="sm:hidden">Dash</span>
+                                Hi, <?php echo e(Str::limit(Auth::guard('player')->user()->name, 8)); ?>
+
                             </span>
                         </a>
                     <?php else: ?>
-                        <a href="<?php echo e(route('player.login')); ?>" class="px-3 md:px-5 py-1.5 md:py-2 text-[10px] md:text-xs font-bold uppercase tracking-widest border border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition -skew-x-12">
+                        <a href="<?php echo e(route('player.login')); ?>" class="hidden md:block px-3 md:px-5 py-1.5 md:py-2 text-[10px] md:text-xs font-bold uppercase tracking-widest border border-red-600 text-red-600 hover:bg-red-600 hover:text-white transition -skew-x-12">
                             <span class="skew-x-12 block">Login</span>
                         </a>
                     <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
@@ -80,27 +82,33 @@
              x-transition:leave="transition ease-in duration-150"
              x-transition:leave-start="opacity-100 translate-y-0"
              x-transition:leave-end="opacity-0 -translate-y-2"
-             class="md:hidden absolute top-full left-0 w-full bg-zinc-900 border-b border-white/10 shadow-2xl">
+             class="md:hidden absolute top-full left-0 w-full bg-zinc-900 border-b border-white/10 shadow-2xl overflow-hidden">
             
             <ul class="flex flex-col py-4 px-6 space-y-4 font-heading font-medium text-sm tracking-widest uppercase text-gray-400">
-                <li>
-                    <a href="<?php echo e(url('/')); ?>" class="block py-2 border-b border-white/5 hover:text-red-500 transition <?php echo e(Request::is('/') ? 'text-white' : ''); ?>">
-                        Beranda
-                    </a>
-                </li>
-                <li>
-                    <a href="<?php echo e(Route::has('clubs.index') ? route('clubs.index') : '#'); ?>" class="block py-2 border-b border-white/5 hover:text-red-500 transition <?php echo e(Request::routeIs('clubs.*') ? 'text-white' : ''); ?>">
-                        Klub
-                    </a>
-                </li>
+                <li><a href="<?php echo e(url('/')); ?>" class="block py-2 border-b border-white/5 hover:text-red-500 transition text-white">Beranda</a></li>
+                <li><a href="<?php echo e(Route::has('clubs.index') ? route('clubs.index') : '#'); ?>" class="block py-2 border-b border-white/5 hover:text-red-500 transition">Klub</a></li>
                 <li><a href="#" class="block py-2 border-b border-white/5 hover:text-red-500 transition">Jadwal</a></li>
                 <li><a href="#" class="block py-2 border-b border-white/5 hover:text-red-500 transition">Klasemen</a></li>
-                <li><a href="#" class="block py-2 hover:text-red-500 transition">Visi Misi</a></li>
+                
+                <?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if BLOCK]><![endif]--><?php endif; ?><?php if(Auth::guard('player')->check()): ?>
+                    <li class="pt-4 border-t border-white/10">
+                        <span class="block text-xs text-gray-500 mb-2">Login sebagai: <strong class="text-white"><?php echo e(Auth::guard('player')->user()->name); ?></strong></span>
+                        <a href="<?php echo e(route('player.dashboard')); ?>" class="block py-2 text-green-500 font-bold hover:text-green-400">Dashboard Saya</a>
+                        <form action="<?php echo e(route('player.logout')); ?>" method="POST" class="mt-2">
+                            <?php echo csrf_field(); ?>
+                            <button type="submit" class="block w-full text-left py-2 text-red-500 font-bold hover:text-red-400">Logout</button>
+                        </form>
+                    </li>
+                <?php else: ?>
+                    <li class="pt-4 border-t border-white/10">
+                        <a href="<?php echo e(route('player.login')); ?>" class="block py-2 text-white font-bold bg-red-600 text-center rounded">Login / Daftar</a>
+                    </li>
+                <?php endif; ?><?php if(\Livewire\Mechanisms\ExtendBlade\ExtendBlade::isRenderingLivewireComponent()): ?><!--[if ENDBLOCK]><![endif]--><?php endif; ?>
             </ul>
         </div>
     </nav>
 
-    <main class="flex-grow pt-[80px]">
+    <main class="flex-grow pt-[74px]">
         <?php echo $__env->yieldContent('content'); ?>
     </main>
 
@@ -120,6 +128,47 @@
             <span class="block text-sm text-gray-600 text-center">© <?php echo e(date('Y')); ?> PSSI Kabupaten Gianyar. All Rights Reserved.</span>
         </div>
     </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            <?php if(session('success')): ?>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: "<?php echo e(session('success')); ?>",
+                    background: '#18181b',
+                    color: '#fff',
+                    confirmButtonColor: '#dc2626',
+                    timer: 3000,
+                    timerProgressBar: true
+                });
+            <?php endif; ?>
+
+            <?php if(session('error')): ?>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal!',
+                    text: "<?php echo e(session('error')); ?>",
+                    background: '#18181b',
+                    color: '#fff',
+                    confirmButtonColor: '#dc2626'
+                });
+            <?php endif; ?>
+            
+            // Cek error validasi (dari $errors)
+            <?php if($errors->any()): ?>
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Mohon periksa kembali inputan Anda.',
+                    background: '#18181b',
+                    color: '#fff',
+                    confirmButtonColor: '#dc2626'
+                });
+            <?php endif; ?>
+        });
+    </script>
 
 </body>
 </html><?php /**PATH H:\pssi_gianyar\resources\views/layouts/app.blade.php ENDPATH**/ ?>

@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Jalankan migrasi untuk tabel pengguna dasar.
      */
     public function up(): void
     {
@@ -15,6 +15,13 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            
+            // Role: 'admin' (Pusat) atau 'operator' (Klub)
+            $table->string('role')->default('admin'); 
+            
+            // Siapkan kolom untuk relasi klub nanti
+            $table->unsignedBigInteger('club_id')->nullable(); 
+            
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
@@ -38,7 +45,7 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations.
+     * Hapus tabel jika migrasi dibatalkan.
      */
     public function down(): void
     {

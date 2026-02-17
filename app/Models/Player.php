@@ -10,9 +10,22 @@ class Player extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    // 1. Definisikan Guard (Penting agar Auth::guard('player') berjalan mulus)
+    protected $guard = 'player';
+
+    // 2. Update Fillable: Tambahkan 'club_dummy' untuk input manual
     protected $fillable = [
-        'club_id', 'name', 'email', 'password',
-        'number', 'position', 'photo', 'is_captain',
+        'name', 
+        'email', 
+        'password',
+        'position', 
+        'club_dummy', // <--- Field baru untuk nama klub sementara (teks)
+        
+        // Field lama (biarkan saja, nanti bisa dipakai admin)
+        'club_id', 
+        'number', 
+        'photo', 
+        'is_captain',
     ];
 
     protected $hidden = [
@@ -20,10 +33,11 @@ class Player extends Authenticatable
     ];
 
     protected $casts = [
-        // 'password' => 'hashed',  <-- INI SAYA HAPUS (Biang Kerok Double Hash)
-        'is_captain' => 'boolean', // Opsional: Biar is_captain terbaca true/false (bukan 1/0)
+        // 'password' => 'hashed',  <-- Tetap dimatikan (karena kita hash manual di Controller)
+        'is_captain' => 'boolean',
     ];
 
+    // Relasi ke Club (Opsional: akan null jika club_id kosong)
     public function club()
     {
         return $this->belongsTo(Club::class);

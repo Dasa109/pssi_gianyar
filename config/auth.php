@@ -36,17 +36,17 @@ return [
     */
 
     'guards' => [
-    'web' => [
-        'driver' => 'session',
-        'provider' => 'users',
-    ],
+        'web' => [
+            'driver' => 'session',
+            'provider' => 'users',
+        ],
 
-    // TAMBAHKAN INI:
-    'player' => [
-        'driver' => 'session',
-        'provider' => 'players',
+        // GUARD PEMAIN (PLAYER)
+        'player' => [
+            'driver' => 'session',
+            'provider' => 'players',
+        ],
     ],
-],
 
     /*
     |--------------------------------------------------------------------------
@@ -66,19 +66,16 @@ return [
     */
 
     'providers' => [
-    'users' => [
-        'driver' => 'eloquent',
-        'model' => App\Models\User::class,
-    ],
-    'players' => [
-        'driver' => 'eloquent',
-        'model' => App\Models\Player::class,
-    ],
+        'users' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\User::class,
+        ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        // PROVIDER PEMAIN (MENGHUBUNGKAN KE MODEL PLAYER)
+        'players' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Player::class,
+        ],
     ],
 
     /*
@@ -103,7 +100,15 @@ return [
     'passwords' => [
         'users' => [
             'provider' => 'users',
-            'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
+            'table' => 'password_reset_tokens',
+            'expire' => 60,
+            'throttle' => 60,
+        ],
+
+        // PASSWORD RESET UNTUK PEMAIN (PENTING)
+        'players' => [
+            'provider' => 'players',
+            'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
         ],
