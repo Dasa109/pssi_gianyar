@@ -1,23 +1,40 @@
-/.phpunit.cache
+/vendor
 /node_modules
 /public/build
 /public/hot
 /public/storage
-/storage/*.key
-/storage/pail
-/vendor
+
+# --- Laravel Environment ---
 .env
 .env.backup
 .env.production
-.phpactor.json
 .phpunit.result.cache
-Homestead.json
-Homestead.yaml
+/phpunit.xml
+
+# --- Storage & Logs (SUMBER KONFLIK KAMU) ---
+# Abaikan semua file di dalam folder ini...
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+
+# ...Kecuali file .gitignore itu sendiri (agar foldernya tetap ada)
+!/storage/framework/cache/data/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/testing/.gitignore
+!/storage/framework/views/.gitignore
+!/storage/logs/.gitignore
+
+# --- User Uploads (Foto Pemain & Logo Klub) ---
+# Abaikan file foto asli di komputer lokal
+/storage/app/public/*
+!/storage/app/public/.gitignore
+
+# --- System & Editor ---
+.idea
+.vscode
+.DS_Store
+Thumbs.db
 npm-debug.log
 yarn-error.log
-/auth.json
-/.fleet
-/.idea
-/.nova
-/.vscode
-/.zed
