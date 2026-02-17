@@ -2,44 +2,49 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+// HAPUS atau KOMENTARI baris ini:
+// use Illuminate\Database\Eloquent\Model;
 
+// TAMBAHKAN baris ini:
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+// Ubah 'extends Model' menjadi 'extends Authenticatable'
 class Player extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory;
 
-    // 1. Definisikan Guard (Penting agar Auth::guard('player') berjalan mulus)
-    protected $guard = 'player';
-
-    // 2. Update Fillable: Tambahkan 'club_dummy' untuk input manual
     protected $fillable = [
-        'name', 
-        'email', 
+        'name',
+        'email',
         'password',
-        'position', 
-        'club_dummy', // <--- Field baru untuk nama klub sementara (teks)
-        
-        // Field lama (biarkan saja, nanti bisa dipakai admin)
-        'club_id', 
-        'number', 
-        'photo', 
+        'position',
+        'number',
+        'club_id',
+        'club_dummy',
+        'photo',
         'is_captain',
+        'status',
     ];
 
     protected $hidden = [
-        'password', 'remember_token',
+        'password',
+        'remember_token',
     ];
 
     protected $casts = [
-        // 'password' => 'hashed',  <-- Tetap dimatikan (karena kita hash manual di Controller)
         'is_captain' => 'boolean',
+        'password' => 'hashed',
     ];
 
-    // Relasi ke Club (Opsional: akan null jika club_id kosong)
-    public function club()
+    public function club(): BelongsTo
     {
         return $this->belongsTo(Club::class);
+    }
+    
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
     }
 }
