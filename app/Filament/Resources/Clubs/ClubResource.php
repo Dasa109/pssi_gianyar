@@ -15,7 +15,6 @@ use App\Filament\Resources\Clubs\ClubResource\RelationManagers\PlayersRelationMa
 
 class ClubResource extends Resource
 {
-    // Perbaikan typo: Menggunakan ::class bukan = class
     protected static ?string $model = Club::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-trophy';
@@ -26,14 +25,13 @@ class ClubResource extends Resource
 
     /**
      * LOGIC 1: GLOBAL FILTER
-     * Memastikan Operator hanya melihat klub mereka sendiri di seluruh halaman.
+     * Memastikan Operator hanya melihat klub mereka sendiri.
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        // Menggunakan check method_exists agar aman dari error jika model User belum diupdate
         if ($user && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
             $query->where('id', $user->club_id);
         }
@@ -48,7 +46,6 @@ class ClubResource extends Resource
 
     public static function form(Form $form): Form
     {
-        // Cache pengecekan role untuk performa
         $isOperator = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && !auth()->user()->isSuperAdmin();
 
         return $form
@@ -61,7 +58,6 @@ class ClubResource extends Resource
                                     ->label('Nama Klub')
                                     ->required()
                                     ->placeholder('Contoh: PS Gianyar')
-                                    // Proteksi: Operator dilarang mengubah Nama Klub entitas resmi
                                     ->disabled($isOperator) 
                                     ->dehydrated() 
                                     ->live(onBlur: true)
@@ -74,10 +70,12 @@ class ClubResource extends Resource
                                     ->unique(Club::class, 'slug', ignoreRecord: true)
                                     ->required(),
 
+                                // PERBAIKAN: Pastikan menggunakan 'history' sesuai migrasi terbaru
                                 Forms\Components\RichEditor::make('history')
                                     ->label('Sejarah & Profil')
                                     ->toolbarButtons(['bold', 'italic', 'link', 'bulletList'])
-                                    ->columnSpanFull(),
+                                    ->columnSpanFull()
+                                    ->required(), // Tambahkan required agar data tidak kosong
                             ])->columns(2),
                     ])->columnSpan(['lg' => 2]),
 
@@ -90,7 +88,7 @@ class ClubResource extends Resource
                                     ->image()
                                     ->disk('public')
                                     ->directory('clubs/logos')
-                                    ->imageEditor() // Tambahan: Agar user bisa crop logo
+                                    ->imageEditor()
                                     ->columnSpanFull(),
 
                                 Forms\Components\TextInput::make('short_name')
@@ -104,7 +102,8 @@ class ClubResource extends Resource
 
                         Forms\Components\Section::make('Detail Lokasi')
                             ->schema([
-                                Forms\Components\TextInput::make('stadium_name')
+                                // Pastikan nama field ini sama dengan di Model dan Migration
+                                Forms\Components\TextInput::make('stadium')
                                     ->label('Stadion Homebase')
                                     ->prefixIcon('heroicon-m-map-pin'),
 
@@ -153,7 +152,6 @@ class ClubResource extends Resource
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                // Sembunyikan tombol Delete jika bukan Super Admin (Operator dilarang hapus klub)
                 Tables\Actions\DeleteAction::make()
                     ->visible($isSuperAdmin),
             ])
@@ -172,9 +170,6 @@ class ClubResource extends Resource
         ];
     }
 
-    /**
-     * Hak Akses: Tombol 'New Klub' hanya muncul untuk Super Admin.
-     */
     public static function canCreate(): bool
     {
         return auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
