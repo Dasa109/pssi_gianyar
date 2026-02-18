@@ -21,17 +21,31 @@ class PlayersRelationManager extends RelationManager
     protected static ?string $icon = 'heroicon-o-users';
 
     public function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')->required(),
-                Forms\Components\TextInput::make('email')->email()->required(),
-                Forms\Components\Select::make('position')
-                    ->options([
-                        'GK' => 'Kiper', 'DEF' => 'Bek', 'MID' => 'Gelandang', 'FWD' => 'Penyerang'
-                    ]),
-            ]);
-    }
+{
+    return $form
+        ->schema([
+            Forms\Components\TextInput::make('name')->required(),
+            Forms\Components\TextInput::make('email')->email()->required(),
+            // Tambah input password (hanya saat create)
+            Forms\Components\TextInput::make('password')
+                ->password()
+                ->visibleOn('create') // Hanya muncul saat buat baru
+                ->required(),
+            Forms\Components\Select::make('position')
+                ->options([
+                    'GK' => 'Kiper', 'DEF' => 'Bek', 'MID' => 'Gelandang', 'FWD' => 'Penyerang'
+                ]),
+            // Opsi status agar admin bisa langsung set 'Active'
+            Forms\Components\Select::make('status')
+                ->options([
+                    'pending' => 'Pending',
+                    'active' => 'Active',
+                    'rejected' => 'Rejected',
+                ])
+                ->default('active') // Default langsung aktif kalau admin yang input
+                ->required(),
+        ]);
+}
 
     public function table(Table $table): Table
     {
