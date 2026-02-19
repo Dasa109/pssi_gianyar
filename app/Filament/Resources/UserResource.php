@@ -45,34 +45,31 @@ class UserResource extends Resource
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
 
-                // --- BAGIAN ROLE YANG DIPERBAIKI ---
+                // --- BAGIAN ROLE (HANYA ADMIN & OPERATOR) ---
                 Select::make('role')
                     ->label('Role Akun')
                     ->options([
-                        'super_admin' => 'Super Admin',
-                        'admin'       => 'Admin',        // <--- Role Admin ditambahkan
+                        // Opsi Super Admin DIHAPUS agar tidak bisa dipilih di UI
+                        'admin'       => 'Admin',
                         'operator'    => 'Operator Klub',
                     ])
                     ->required()
                     ->native(false)
-                    ->live() // <--- Agar form bereaksi langsung saat ini diganti
+                    ->live()
                     ->afterStateUpdated(function (Set $set, ?string $state) {
-                        // Jika role bukan operator, hapus pilihan klub
+                        // Jika bukan operator, reset klub
                         if ($state !== 'operator') {
                             $set('club_id', null);
                         }
                     }),
 
-                // --- BAGIAN KLUB YANG DIPERBAIKI ---
                 Select::make('club_id')
                     ->relationship('club', 'name')
                     ->label('Asal Klub')
                     ->searchable()
                     ->preload()
                     ->placeholder('Pilih Klub')
-                    // Hanya muncul jika role yang dipilih adalah 'operator'
                     ->visible(fn (Get $get) => $get('role') === 'operator')
-                    // Wajib diisi HANYA jika terlihat (yaitu saat jadi operator)
                     ->required(fn (Get $get) => $get('role') === 'operator'),
 
                 TextInput::make('password')
@@ -103,9 +100,9 @@ class UserResource extends Resource
                     ->badge()
                     ->label('Role')
                     ->color(fn (string $state): string => match ($state) {
-                        'super_admin' => 'danger',   // Merah
-                        'admin'       => 'warning',  // Kuning/Oranye
-                        'operator'    => 'success',  // Hijau
+                        'super_admin' => 'danger',
+                        'admin'       => 'warning',
+                        'operator'    => 'success',
                         default       => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -116,12 +113,11 @@ class UserResource extends Resource
                     })
                     ->sortable(),
 
-                // --- BAGIAN KLUB DI TABEL ---
                 TextColumn::make('club.name')
                     ->label('Klub')
                     ->placeholder('-')
-                    // Paksa tampil '-' jika usernya Admin/Super Admin (meski di DB masih ada datanya)
                     ->state(function (User $record) {
+                        // Klub hanya muncul jika bukan Super Admin / Admin
                         if ($record->role === 'super_admin' || $record->role === 'admin') {
                             return null;
                         }
@@ -144,7 +140,11 @@ class UserResource extends Resource
                     ]),
             ])
             ->actions([
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\EditAction::make()
+                    // Opsional: Sembunyikan tombol Edit jika targetnya adalah sesama Super Admin
+                    // agar tidak sengaja mendowngrade teman sesama Super Admin
+                    ->hidden(fn (User $record) => $record->role === 'super_admin' && $record->id !== auth()->id()),
+
                 Tables\Actions\DeleteAction::make()
                     ->hidden(fn (User $record) => $record->id === auth()->id()),
             ])
