@@ -15,15 +15,31 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\Model;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
-
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationGroup = 'Settings';
     protected static ?string $navigationLabel = 'Manajemen User';
-    protected static ?int $navigationSort = 1;
+
+    /**
+     * KEAMANAN URL: Mencegah akses Edit via URL jika targetnya adalah Super Admin lain
+     */
+    public static function canEdit(Model $record): bool
+    {
+        // Izinkan edit jika: Target bukan Super Admin ATAU Target adalah diri sendiri
+        return $record->role !== 'super_admin' || $record->id === auth()->id();
+    }
+
+    /**
+     * KEAMANAN URL: Mencegah akses Delete via URL/API jika targetnya adalah diri sendiri atau Super Admin
+     */
+    public static function canDelete(Model $record): bool
+    {
+        return $record->role !== 'super_admin' && $record->id !== auth()->id();
+    }
 
     public static function shouldRegisterNavigation(): bool
     {
@@ -45,19 +61,18 @@ class UserResource extends Resource
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
 
-                // --- BAGIAN ROLE (HANYA ADMIN & OPERATOR) ---
                 Select::make('role')
                     ->label('Role Akun')
                     ->options([
-                        // Opsi Super Admin DIHAPUS agar tidak bisa dipilih di UI
                         'admin'       => 'Admin',
                         'operator'    => 'Operator Klub',
                     ])
                     ->required()
                     ->native(false)
                     ->live()
+                    // PROTEKSI: Jika user ini adalah Super Admin, Role tidak bisa diubah (biar tidak downgrade)
+                    ->disabled(fn (?User $record) => $record?->role === 'super_admin')
                     ->afterStateUpdated(function (Set $set, ?string $state) {
-                        // Jika bukan operator, reset klub
                         if ($state !== 'operator') {
                             $set('club_id', null);
                         }
@@ -68,7 +83,6 @@ class UserResource extends Resource
                     ->label('Asal Klub')
                     ->searchable()
                     ->preload()
-                    ->placeholder('Pilih Klub')
                     ->visible(fn (Get $get) => $get('role') === 'operator')
                     ->required(fn (Get $get) => $get('role') === 'operator'),
 
@@ -86,19 +100,11 @@ class UserResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')
-                    ->label('Nama')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('email')
-                    ->searchable()
-                    ->icon('heroicon-m-envelope')
-                    ->copyable(),
-
+                TextColumn::make('name')->searchable()->sortable(),
+                TextColumn::make('email')->searchable()->icon('heroicon-m-envelope'),
+                
                 TextColumn::make('role')
                     ->badge()
-                    ->label('Role')
                     ->color(fn (string $state): string => match ($state) {
                         'super_admin' => 'danger',
                         'admin'       => 'warning',
@@ -110,54 +116,21 @@ class UserResource extends Resource
                         'admin'       => 'Admin',
                         'operator'    => 'Operator Klub',
                         default       => $state,
-                    })
-                    ->sortable(),
+                    }),
 
                 TextColumn::make('club.name')
                     ->label('Klub')
                     ->placeholder('-')
                     ->state(function (User $record) {
-                        // Klub hanya muncul jika bukan Super Admin / Admin
-                        if ($record->role === 'super_admin' || $record->role === 'admin') {
-                            return null;
-                        }
-                        return $record->club?->name;
-                    })
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime('d M Y')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('role')
-                    ->options([
-                        'super_admin' => 'Super Admin',
-                        'admin'       => 'Admin',
-                        'operator'    => 'Operator Klub',
-                    ]),
+                        return ($record->role === 'super_admin' || $record->role === 'admin') 
+                            ? null 
+                            : $record->club?->name;
+                    }),
             ])
             ->actions([
-                Tables\Actions\EditAction::make()
-                    // Opsional: Sembunyikan tombol Edit jika targetnya adalah sesama Super Admin
-                    // agar tidak sengaja mendowngrade teman sesama Super Admin
-                    ->hidden(fn (User $record) => $record->role === 'super_admin' && $record->id !== auth()->id()),
-
-                Tables\Actions\DeleteAction::make()
-                    ->hidden(fn (User $record) => $record->id === auth()->id()),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
     }
 
     public static function getPages(): array
