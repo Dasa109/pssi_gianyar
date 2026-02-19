@@ -8,26 +8,23 @@ use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
     protected static ?string $model = User::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-users';
-    
     protected static ?string $navigationGroup = 'Settings';
-    
     protected static ?string $navigationLabel = 'Manajemen User';
-    
     protected static ?int $navigationSort = 1;
 
-    // Hanya Super Admin yang bisa melihat menu ini
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->user()->isSuperAdmin();
@@ -37,7 +34,6 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
-                // --- Bagian Informasi Dasar ---
                 TextInput::make('name')
                     ->label('Nama Lengkap')
                     ->required()
@@ -47,38 +43,44 @@ class UserResource extends Resource
                     ->email()
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true), // Cek unik kecuali punya sendiri saat edit
+                    ->unique(ignoreRecord: true),
 
-                // --- Bagian Role & Klub ---
+                // --- BAGIAN ROLE YANG DIPERBAIKI ---
                 Select::make('role')
                     ->label('Role Akun')
                     ->options([
                         'super_admin' => 'Super Admin',
+                        'admin'       => 'Admin',        // <--- Role Admin ditambahkan
                         'operator'    => 'Operator Klub',
-                        // Tambahkan role lain sesuai kebutuhan
                     ])
                     ->required()
-                    ->native(false), // Tampilan dropdown lebih modern
+                    ->native(false)
+                    ->live() // <--- Agar form bereaksi langsung saat ini diganti
+                    ->afterStateUpdated(function (Set $set, ?string $state) {
+                        // Jika role bukan operator, hapus pilihan klub
+                        if ($state !== 'operator') {
+                            $set('club_id', null);
+                        }
+                    }),
 
+                // --- BAGIAN KLUB YANG DIPERBAIKI ---
                 Select::make('club_id')
-                    ->relationship('club', 'name') // Pastikan relasi 'club' ada di Model User
+                    ->relationship('club', 'name')
                     ->label('Asal Klub')
                     ->searchable()
                     ->preload()
-                    ->placeholder('Pilih Klub (Jika Operator)')
-                    // Hanya wajib jika role bukan super_admin (opsional, sesuaikan kebutuhan)
-                    ->visible(fn (Forms\Get $get) => $get('role') !== 'super_admin'),
+                    ->placeholder('Pilih Klub')
+                    // Hanya muncul jika role yang dipilih adalah 'operator'
+                    ->visible(fn (Get $get) => $get('role') === 'operator')
+                    // Wajib diisi HANYA jika terlihat (yaitu saat jadi operator)
+                    ->required(fn (Get $get) => $get('role') === 'operator'),
 
-                // --- Bagian Password ---
                 TextInput::make('password')
                     ->password()
                     ->revealable()
                     ->label('Password')
-                    // Wajib hanya saat Create
                     ->required(fn (string $operation): bool => $operation === 'create')
-                    // Hash password sebelum simpan
                     ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
-                    // Jangan update field ini jika kosong saat Edit
                     ->dehydrated(fn (?string $state): bool => filled($state)),
             ]);
     }
@@ -94,26 +96,37 @@ class UserResource extends Resource
 
                 TextColumn::make('email')
                     ->searchable()
-                    ->icon('heroicon-m-envelope'),
+                    ->icon('heroicon-m-envelope')
+                    ->copyable(),
 
                 TextColumn::make('role')
                     ->badge()
                     ->label('Role')
                     ->color(fn (string $state): string => match ($state) {
-                        'super_admin' => 'danger',
-                        'operator'    => 'success',
+                        'super_admin' => 'danger',   // Merah
+                        'admin'       => 'warning',  // Kuning/Oranye
+                        'operator'    => 'success',  // Hijau
                         default       => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
                         'super_admin' => 'Super Admin',
+                        'admin'       => 'Admin',
                         'operator'    => 'Operator Klub',
                         default       => $state,
                     })
                     ->sortable(),
 
+                // --- BAGIAN KLUB DI TABEL ---
                 TextColumn::make('club.name')
                     ->label('Klub')
                     ->placeholder('-')
+                    // Paksa tampil '-' jika usernya Admin/Super Admin (meski di DB masih ada datanya)
+                    ->state(function (User $record) {
+                        if ($record->role === 'super_admin' || $record->role === 'admin') {
+                            return null;
+                        }
+                        return $record->club?->name;
+                    })
                     ->sortable(),
 
                 TextColumn::make('created_at')
@@ -123,18 +136,16 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                // Filter berdasarkan Role
                 Tables\Filters\SelectFilter::make('role')
                     ->options([
                         'super_admin' => 'Super Admin',
+                        'admin'       => 'Admin',
                         'operator'    => 'Operator Klub',
                     ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
-                
                 Tables\Actions\DeleteAction::make()
-                    // Mencegah user menghapus dirinya sendiri
                     ->hidden(fn (User $record) => $record->id === auth()->id()),
             ])
             ->bulkActions([
@@ -146,9 +157,7 @@ class UserResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
 
     public static function getPages(): array
