@@ -20,12 +20,11 @@ class User extends Authenticatable implements FilamentUser
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'role',     // <--- WAJIB ADA
-        'club_id',  // <--- WAJIB ADA
-    ];
+    'name',
+    'email',
+    'password',
+    'role', // <--- Pastikan ini sudah ditambahkan
+];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -56,10 +55,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     // 2. Cek apakah dia Super Admin (PSSI)
-    public function isSuperAdmin(): bool
-    {
-        return $this->role === 'admin';
-    }
+    public function isSuperAdmin()
+{
+    return $this->role === 'super_admin';
+}
+    public function isAdmin()
+{
+    return $this->role === 'admin';
+}
 
     // 3. Cek apakah dia Operator Klub
     public function isClubOperator(): bool
