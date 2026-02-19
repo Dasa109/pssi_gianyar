@@ -7,6 +7,7 @@ use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
+use Filament\Forms\Set; // <--- WAJIB IMPORT 'Set' UNTUK MENGUBAH VALUE LAIN
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -20,7 +21,6 @@ class UserResource extends Resource
     protected static ?string $navigationGroup = 'Settings';
     protected static ?string $navigationLabel = 'Manajemen User';
 
-    // --- KEAMANAN ---
     public static function shouldRegisterNavigation(): bool
     {
         return auth()->user()->isSuperAdmin();
@@ -30,7 +30,6 @@ class UserResource extends Resource
     {
         return auth()->user()->isSuperAdmin();
     }
-    // ----------------
 
     public static function form(Form $form): Form
     {
@@ -47,7 +46,7 @@ class UserResource extends Resource
                         Forms\Components\TextInput::make('email')
                             ->email()
                             ->required()
-                            ->unique(ignoreRecord: true) 
+                            ->unique(ignoreRecord: true)
                             ->maxLength(255),
 
                         Forms\Components\TextInput::make('password')
@@ -56,17 +55,24 @@ class UserResource extends Resource
                             ->dehydrated(fn ($state) => filled($state))
                             ->required(fn (string $context): bool => $context === 'create'),
 
-                        // --- PILIHAN ROLE (TAMPILAN DIUBAH JADI 'ADMIN') ---
+                        // --- PILIHAN ROLE ---
                         Forms\Components\Select::make('role')
                             ->label('Peran Akun')
                             ->options([
-                                // Kunci tetap 'super_admin' agar logic tidak error, tapi label jadi 'Admin'
-                                'super_admin' => 'Admin', 
+                                'super_admin' => 'Admin',
                                 'operator'    => 'Operator Klub',
                             ])
                             ->default('operator')
                             ->required()
-                            ->live(),
+                            ->live() // Aktifkan Live update
+                            // --- LOGIKA PEMBERSIH ---
+                            // Saat Role berubah, cek nilainya.
+                            // Jika jadi 'super_admin', set 'club_id' jadi NULL.
+                            ->afterStateUpdated(function (Set $set, ?string $state) {
+                                if ($state === 'super_admin') {
+                                    $set('club_id', null);
+                                }
+                            }),
 
                         // --- PILIHAN KLUB ---
                         Forms\Components\Select::make('club_id')
@@ -76,6 +82,7 @@ class UserResource extends Resource
                             ->searchable()
                             ->preload()
                             ->required(fn (Get $get) => $get('role') === 'operator')
+                            // Gunakan visible agar hilang total jika bukan operator
                             ->visible(fn (Get $get) => $get('role') === 'operator'),
                     ])
                     ->columns(2),
@@ -90,31 +97,29 @@ class UserResource extends Resource
                     ->label('Nama')
                     ->searchable()
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
-                
-                // --- KOLOM ROLE (TAMPILAN DIUBAH JADI 'ADMIN') ---
+
                 Tables\Columns\TextColumn::make('role')
                     ->badge()
                     ->label('Role')
                     ->color(fn (string $state): string => match ($state) {
-                        'super_admin' => 'danger',  // Merah
-                        'operator'    => 'success', // Hijau
+                        'super_admin' => 'danger',
+                        'operator'    => 'success',
                         default       => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        // Ubah tampilan teks di tabel
                         'super_admin' => 'Admin',
                         'operator'    => 'Operator Klub',
                         default       => $state,
                     }),
-                
+
                 Tables\Columns\TextColumn::make('club.name')
                     ->label('Klub')
                     ->placeholder('-')
                     ->sortable(),
-                
+
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Dibuat')
                     ->dateTime('d M Y')
