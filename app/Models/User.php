@@ -6,6 +6,7 @@ namespace App\Models;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // Tambahan untuk relasi
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -20,11 +21,12 @@ class User extends Authenticatable implements FilamentUser
      * @var array<int, string>
      */
     protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'role', // <--- Pastikan ini sudah ditambahkan
-];
+        'name',
+        'email',
+        'password',
+        'role',    // <--- Penting untuk Super Admin / Admin
+        'club_id', // <--- Penting jika User adalah Operator Klub
+    ];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -46,35 +48,37 @@ class User extends Authenticatable implements FilamentUser
         'password' => 'hashed',
     ];
 
-    // --- LOGIKA MULTI-USER ---
+    // --- 1. HELPER CEK ROLE ---
 
-    // 1. Relasi: User ini megang klub apa?
-    public function club()
+    public function isSuperAdmin(): bool
     {
-        return $this->belongsTo(Club::class);
+        return $this->role === 'super_admin';
     }
 
-    // 2. Cek apakah dia Super Admin (PSSI)
-    public function isSuperAdmin()
-{
-    return $this->role === 'super_admin';
-}
-    public function isAdmin()
-{
-    return $this->role === 'admin';
-}
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
 
-    // 3. Cek apakah dia Operator Klub
+    // Cek apakah dia Operator Klub (Punya role operator & terhubung ke data klub)
     public function isClubOperator(): bool
     {
         return $this->role === 'operator' && $this->club_id !== null;
     }
 
-    // 4. Izin Login ke Filament
+    // --- 2. RELASI DATABASE ---
+
+    public function club(): BelongsTo
+    {
+        return $this->belongsTo(Club::class);
+    }
+
+    // --- 3. KONFIGURASI FILAMENT ---
+
     public function canAccessPanel(Panel $panel): bool
     {
-        // Semua user (admin & operator) boleh login
-        // Jika nanti mau dibatasi, ubah logic di sini
+        // Izinkan login jika user punya status Super Admin atau Admin
+        // Anda bisa memperketat logika ini jika perlu
         return true; 
     }
 }
