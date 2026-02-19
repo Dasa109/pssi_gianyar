@@ -2,33 +2,44 @@
 
 namespace App\Filament\Widgets;
 
-use Flowframe\Trend\Trend;
-use Flowframe\Trend\TrendValue;
-use App\Models\User;
+use App\Models\User; // <--- PASTIKAN INI ADA
+use Filament\Widgets\ChartWidget;
+use Flowframe\Trend\Trend; // <--- PASTIKAN INI ADA
+use Flowframe\Trend\TrendValue; // <--- PASTIKAN INI ADA
 
-protected function getData(): array
+class UsersChart extends ChartWidget
 {
-    // Mengambil data pendaftaran user 6 bulan terakhir secara otomatis
-    $data = Trend::model(User::class)
-        ->between(
-            start: now()->startOfMonth()->subMonths(6),
-            end: now()->endOfMonth(),
-        )
-        ->perMonth()
-        ->count();
+    protected static ?string $heading = 'Tren Pertumbuhan Pengguna';
+    
+    protected static ?int $sort = 2;
 
-    return [
-        'datasets' => [
-            [
-                'label' => 'User Baru Mendaftar',
-                // Mengambil angka (aggregate) dari hasil query trend
-                'data' => $data->map(fn (TrendValue $value) => $value->aggregate),
-                'borderColor' => 'rgb(16, 185, 129)', // Warna Emerald agar match dengan tema dashboard
-                'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
-                'fill' => 'start',
+    protected function getData(): array
+    {
+        // Mengambil data pendaftaran user 6 bulan terakhir
+        $data = Trend::model(User::class)
+            ->between(
+                start: now()->startOfMonth()->subMonths(6),
+                end: now()->endOfMonth(),
+            )
+            ->perMonth()
+            ->count();
+
+        return [
+            'datasets' => [
+                [
+                    'label' => 'User Baru Mendaftar',
+                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate)->toArray(),
+                    'borderColor' => 'rgb(16, 185, 129)',
+                    'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
+                    'fill' => 'start',
+                ],
             ],
-        ],
-        // Mengambil label bulan (Jan, Feb, dst) secara otomatis
-        'labels' => $data->map(fn (TrendValue $value) => $value->date),
-    ];
+            'labels' => $data->map(fn (TrendValue $value) => $value->date)->toArray(),
+        ];
+    }
+
+    protected function getType(): string
+    {
+        return 'line';
+    }
 }
