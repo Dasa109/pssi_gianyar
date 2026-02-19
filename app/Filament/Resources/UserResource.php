@@ -5,14 +5,15 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages;
 use App\Models\User;
 use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserResource extends Resource
 {
@@ -23,14 +24,11 @@ class UserResource extends Resource
     protected static ?string $navigationGroup = 'Settings';
     
     protected static ?string $navigationLabel = 'Manajemen User';
+    
+    protected static ?int $navigationSort = 1;
 
+    // Hanya Super Admin yang bisa melihat menu ini
     public static function shouldRegisterNavigation(): bool
-    {
-        // Pastikan user memiliki method isSuperAdmin() di Model User
-        return auth()->user()->isSuperAdmin();
-    }
-
-    public static function canViewAny(): bool
     {
         return auth()->user()->isSuperAdmin();
     }
@@ -39,37 +37,49 @@ class UserResource extends Resource
     {
         return $form
             ->schema([
+                // --- Bagian Informasi Dasar ---
                 TextInput::make('name')
                     ->label('Nama Lengkap')
                     ->required()
                     ->maxLength(255),
-                
+
                 TextInput::make('email')
                     ->email()
                     ->required()
                     ->maxLength(255)
-                    ->unique(ignoreRecord: true), // Validasi unique agar tidak error saat edit
-                
-                // Jika ingin menambah input Role manual, uncomment baris di bawah:
-                /*
+                    ->unique(ignoreRecord: true), // Cek unik kecuali punya sendiri saat edit
+
+                // --- Bagian Role & Klub ---
                 Select::make('role')
+                    ->label('Role Akun')
                     ->options([
                         'super_admin' => 'Super Admin',
-                        'operator' => 'Operator Klub',
+                        'operator'    => 'Operator Klub',
+                        // Tambahkan role lain sesuai kebutuhan
                     ])
-                    ->required(),
-                */
+                    ->required()
+                    ->native(false), // Tampilan dropdown lebih modern
 
+                Select::make('club_id')
+                    ->relationship('club', 'name') // Pastikan relasi 'club' ada di Model User
+                    ->label('Asal Klub')
+                    ->searchable()
+                    ->preload()
+                    ->placeholder('Pilih Klub (Jika Operator)')
+                    // Hanya wajib jika role bukan super_admin (opsional, sesuaikan kebutuhan)
+                    ->visible(fn (Forms\Get $get) => $get('role') !== 'super_admin'),
+
+                // --- Bagian Password ---
                 TextInput::make('password')
                     ->password()
-                    ->revealable() // Agar bisa lihat password saat ketik
-                    // Password wajib diisi hanya saat membuat user baru (create)
+                    ->revealable()
+                    ->label('Password')
+                    // Wajib hanya saat Create
                     ->required(fn (string $operation): bool => $operation === 'create')
-                    // Hash password sebelum disimpan ke database
+                    // Hash password sebelum simpan
                     ->dehydrateStateUsing(fn (string $state): string => Hash::make($state))
-                    // Jangan update password jika form kosong saat edit
-                    ->dehydrated(fn (?string $state): bool => filled($state))
-                    ->label('Password'),
+                    // Jangan update field ini jika kosong saat Edit
+                    ->dehydrated(fn (?string $state): bool => filled($state)),
             ]);
     }
 
@@ -83,7 +93,8 @@ class UserResource extends Resource
                     ->sortable(),
 
                 TextColumn::make('email')
-                    ->searchable(),
+                    ->searchable()
+                    ->icon('heroicon-m-envelope'),
 
                 TextColumn::make('role')
                     ->badge()
@@ -94,12 +105,12 @@ class UserResource extends Resource
                         default       => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'super_admin' => 'Admin',
+                        'super_admin' => 'Super Admin',
                         'operator'    => 'Operator Klub',
                         default       => $state,
-                    }),
+                    })
+                    ->sortable(),
 
-                // Pastikan di Model User ada function club() { return $this->belongsTo(Club::class); }
                 TextColumn::make('club.name')
                     ->label('Klub')
                     ->placeholder('-')
@@ -112,10 +123,16 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                //
+                // Filter berdasarkan Role
+                Tables\Filters\SelectFilter::make('role')
+                    ->options([
+                        'super_admin' => 'Super Admin',
+                        'operator'    => 'Operator Klub',
+                    ]),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                
                 Tables\Actions\DeleteAction::make()
                     // Mencegah user menghapus dirinya sendiri
                     ->hidden(fn (User $record) => $record->id === auth()->id()),
