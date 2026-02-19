@@ -7,7 +7,7 @@ use App\Models\User;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Get;
-use Filament\Forms\Set; // <--- WAJIB IMPORT 'Set' UNTUK MENGUBAH VALUE LAIN
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -55,21 +55,19 @@ class UserResource extends Resource
                             ->dehydrated(fn ($state) => filled($state))
                             ->required(fn (string $context): bool => $context === 'create'),
 
-                        // --- PILIHAN ROLE ---
+                        // --- PILIHAN ROLE (ADMIN vs OPERATOR) ---
                         Forms\Components\Select::make('role')
                             ->label('Peran Akun')
                             ->options([
-                                'super_admin' => 'Admin',
-                                'operator'    => 'Operator Klub',
+                                'super_admin' => 'Admin',          // Label Tampilan: Admin
+                                'operator'    => 'Operator Klub',  // Label Tampilan: Operator
                             ])
                             ->default('operator')
                             ->required()
-                            ->live() // Aktifkan Live update
-                            // --- LOGIKA PEMBERSIH ---
-                            // Saat Role berubah, cek nilainya.
-                            // Jika jadi 'super_admin', set 'club_id' jadi NULL.
-                            ->afterStateUpdated(function (Set $set, ?string $state) {
-                                if ($state === 'super_admin') {
+                            ->live()
+                            // 1. PEMBERSIH UI: Saat diganti di layar, langsung kosongkan nilai club_id
+                            ->afterStateUpdated(function (Set $set, $state) {
+                                if ($state !== 'operator') {
                                     $set('club_id', null);
                                 }
                             }),
@@ -81,9 +79,13 @@ class UserResource extends Resource
                             ->relationship('club', 'name')
                             ->searchable()
                             ->preload()
+                            ->visible(fn (Get $get) => $get('role') === 'operator')
                             ->required(fn (Get $get) => $get('role') === 'operator')
-                            // Gunakan visible agar hilang total jika bukan operator
-                            ->visible(fn (Get $get) => $get('role') === 'operator'),
+                            
+                            // 2. PENJAGA DATABASE (PENTING!): 
+                            // Saat tombol Simpan ditekan, sistem cek lagi:
+                            // "Apakah role-nya Operator? Jika BUKAN, paksa club_id jadi NULL."
+                            ->dehydrateStateUsing(fn ($state, Get $get) => $get('role') === 'operator' ? $state : null),
                     ])
                     ->columns(2),
             ]);
@@ -110,7 +112,7 @@ class UserResource extends Resource
                         default       => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'super_admin' => 'Admin',
+                        'super_admin' => 'Admin',        // Tampilan di Tabel
                         'operator'    => 'Operator Klub',
                         default       => $state,
                     }),
