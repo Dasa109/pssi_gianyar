@@ -2,10 +2,9 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\User; // <--- PASTIKAN INI ADA
+use App\Models\User;
 use Filament\Widgets\ChartWidget;
-use Flowframe\Trend\Trend; // <--- PASTIKAN INI ADA
-use Flowframe\Trend\TrendValue; // <--- PASTIKAN INI ADA
+use Carbon\Carbon; // <--- Kita gunakan bawaan Laravel saja
 
 class UsersChart extends ChartWidget
 {
@@ -15,26 +14,35 @@ class UsersChart extends ChartWidget
 
     protected function getData(): array
     {
-        // Mengambil data pendaftaran user 6 bulan terakhir
-        $data = Trend::model(User::class)
-            ->between(
-                start: now()->startOfMonth()->subMonths(6),
-                end: now()->endOfMonth(),
-            )
-            ->perMonth()
-            ->count();
+        $data = [];
+        $labels = [];
+
+        // Looping untuk mengambil data 6 bulan terakhir secara mundur
+        for ($i = 5; $i >= 0; $i--) {
+            // Ambil referensi bulan (misal: 5 bulan lalu, 4 bulan lalu, dst)
+            $month = now()->subMonths($i);
+            
+            // Hitung jumlah user berdasarkan tahun dan bulan tersebut
+            $count = User::whereYear('created_at', $month->year)
+                         ->whereMonth('created_at', $month->month)
+                         ->count();
+
+            // Masukkan nama bulan (Contoh: 'Jan 2026') dan jumlah datanya ke array
+            $labels[] = $month->translatedFormat('M Y'); 
+            $data[] = $count;
+        }
 
         return [
             'datasets' => [
                 [
                     'label' => 'User Baru Mendaftar',
-                    'data' => $data->map(fn (TrendValue $value) => $value->aggregate)->toArray(),
-                    'borderColor' => 'rgb(16, 185, 129)',
+                    'data' => $data,
+                    'borderColor' => 'rgb(16, 185, 129)', // Warna Emerald PSSI Gianyar
                     'backgroundColor' => 'rgba(16, 185, 129, 0.1)',
                     'fill' => 'start',
                 ],
             ],
-            'labels' => $data->map(fn (TrendValue $value) => $value->date)->toArray(),
+            'labels' => $labels,
         ];
     }
 

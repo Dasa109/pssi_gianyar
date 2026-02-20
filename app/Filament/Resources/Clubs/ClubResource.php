@@ -41,12 +41,22 @@ class ClubResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
+        // Tampilkan jumlah klub yang statusnya pending untuk Admin
+        if (auth()->user() && auth()->user()->isSuperAdmin()) {
+            return static::getModel()::where('status', 'pending')->count();
+        }
         return static::getEloquentQuery()->count();
+    }
+
+    public static function getNavigationBadgeColor(): ?string
+    {
+        return static::getNavigationBadge() > 0 ? 'warning' : 'primary';
     }
 
     public static function form(Form $form): Form
     {
         $isOperator = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && !auth()->user()->isSuperAdmin();
+        $isSuperAdmin = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
 
         return $form
             ->schema([
@@ -70,18 +80,30 @@ class ClubResource extends Resource
                                     ->unique(Club::class, 'slug', ignoreRecord: true)
                                     ->required(),
 
-                                // PERBAIKAN: Pastikan menggunakan 'history' sesuai migrasi terbaru
+                                Forms\Components\Select::make('status')
+                                    ->label('Status Validasi')
+                                    ->options([
+                                        'pending' => 'Menunggu Persetujuan',
+                                        'approved' => 'Disetujui / Aktif',
+                                        'rejected' => 'Ditolak',
+                                    ])
+                                    ->default('approved')
+                                    ->required()
+                                    ->disabled($isOperator) // Hanya admin yang bisa ubah status
+                                    ->visible($isSuperAdmin),
+
                                 Forms\Components\RichEditor::make('history')
                                     ->label('Sejarah & Profil')
                                     ->toolbarButtons(['bold', 'italic', 'link', 'bulletList'])
                                     ->columnSpanFull()
-                                    ->required(), // Tambahkan required agar data tidak kosong
+                                    // Boleh kosong saat mendaftar dari React
+                                    ->required(false), 
                             ])->columns(2),
                     ])->columnSpan(['lg' => 2]),
 
                 Forms\Components\Group::make()
                     ->schema([
-                        Forms\Components\Section::make('Logo & Branding')
+                        Forms\Components\Section::make('Logo & Legalitas')
                             ->schema([
                                 Forms\Components\FileUpload::make('logo')
                                     ->label('Logo Klub')
@@ -91,18 +113,26 @@ class ClubResource extends Resource
                                     ->imageEditor()
                                     ->columnSpanFull(),
 
+                                Forms\Components\FileUpload::make('legal_document')
+                                    ->label('Dokumen Legalitas (PDF/ZIP)')
+                                    ->acceptedFileTypes(['application/pdf', 'application/zip'])
+                                    ->disk('public')
+                                    ->directory('clubs/documents')
+                                    ->columnSpanFull()
+                                    ->visible($isSuperAdmin), // Operator tidak perlu lihat ini saat edit
+
                                 Forms\Components\TextInput::make('short_name')
                                     ->label('Kode / Singkatan')
                                     ->placeholder('PSG')
                                     ->maxLength(5)
-                                    ->required()
+                                    // Boleh kosong saat dari React, admin nanti yang isi
+                                    ->required(false) 
                                     ->live()
                                     ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('short_name', Str::upper($state))),
                             ]),
 
                         Forms\Components\Section::make('Detail Lokasi')
                             ->schema([
-                                // Pastikan nama field ini sama dengan di Model dan Migration
                                 Forms\Components\TextInput::make('stadium')
                                     ->label('Stadion Homebase')
                                     ->prefixIcon('heroicon-m-map-pin'),
@@ -139,18 +169,67 @@ class ClubResource extends Resource
                     ->sortable()
                     ->weight('bold'),
 
+                Tables\Columns\TextColumn::make('status')
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'pending' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                    })
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'pending' => 'Pending',
+                        'approved' => 'Aktif',
+                        'rejected' => 'Ditolak',
+                    }),
+
                 Tables\Columns\TextColumn::make('short_name')
                     ->label('Kode')
                     ->badge()
                     ->color('primary')
                     ->alignCenter(),
 
+                Tables\Columns\TextColumn::make('legal_document')
+                    ->label('Berkas')
+                    ->formatStateUsing(fn ($state) => $state ? 'Unduh' : '-')
+                    ->url(fn ($record) => $record->legal_document ? asset('storage/'.$record->legal_document) : null)
+                    ->openUrlInNewTab()
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->color('info')
+                    ->visible($isSuperAdmin),
+
                 Tables\Columns\TextColumn::make('players_count')
                     ->label('Jml Pemain')
                     ->badge()
                     ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
             ])
+            ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->options([
+                        'pending' => 'Pending',
+                        'approved' => 'Aktif',
+                        'rejected' => 'Ditolak',
+                    ])
+                    ->visible($isSuperAdmin),
+            ])
             ->actions([
+                // Tombol Approve untuk Admin
+                Tables\Actions\Action::make('approve')
+                    ->label('Terima')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->visible(fn (Club $record) => $isSuperAdmin && $record->status === 'pending')
+                    ->action(fn (Club $record) => $record->update(['status' => 'approved'])),
+
+                // Tombol Reject untuk Admin
+                Tables\Actions\Action::make('reject')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->visible(fn (Club $record) => $isSuperAdmin && $record->status === 'pending')
+                    ->action(fn (Club $record) => $record->update(['status' => 'rejected'])),
+
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
                     ->visible($isSuperAdmin),

@@ -29,14 +29,22 @@
             Wadah resmi informasi kompetisi, klub, dan perkembangan sepak bola di Kabupaten Gianyar. Junjung tinggi sportivitas demi prestasi.
         </p>
 
-        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center w-full px-4 sm:px-0">
+        {{-- PERBAIKAN: Ditambahkan flex-wrap agar tombol rapi di layar HP --}}
+        <div class="flex flex-col sm:flex-row flex-wrap gap-4 justify-center items-center w-full px-4 sm:px-0">
+            
             <a href="{{ route('clubs.index') }}" class="w-full sm:w-auto group relative px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-heading font-bold uppercase tracking-widest md:-skew-x-12 transition-all hover:scale-105 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-center">
-                <span class="block md:skew-x-12">Lihat Klub Peserta</span>
+                <span class="block md:skew-x-12">Lihat Klub</span>
+            </a>
+
+            {{-- TOMBOL BARU: Mengarah ke halaman Pendaftaran Klub --}}
+            <a href="{{ route('club.register') }}" class="w-full sm:w-auto group relative px-8 py-4 border-2 border-red-600 hover:bg-red-600 text-red-500 hover:text-white font-heading font-bold uppercase tracking-widest md:-skew-x-12 transition-all hover:scale-105 shadow-[0_0_15px_rgba(220,38,38,0.3)] text-center">
+                <span class="block md:skew-x-12">Daftar Klub Baru</span>
             </a>
             
             <a href="#" class="w-full sm:w-auto group px-8 py-4 border border-zinc-600 hover:border-white text-zinc-300 hover:text-white font-heading font-bold uppercase tracking-widest md:-skew-x-12 transition-all hover:bg-white/5 text-center">
-                <span class="block md:skew-x-12">Jadwal Pertandingan</span>
+                <span class="block md:skew-x-12">Jadwal</span>
             </a>
+            
         </div>
     </div>
 </div>
@@ -51,7 +59,6 @@
                 <span class="text-zinc-500 text-[10px] md:text-xs uppercase tracking-widest font-bold">Musim Kompetisi</span>
             </div>
             <div class="group">
-                {{-- Placeholder Count --}}
                 <span class="block text-3xl md:text-5xl font-heading font-bold text-white mb-2 group-hover:text-red-600 transition">
                     {{ \App\Models\Club::count() ?? '18' }}
                 </span>

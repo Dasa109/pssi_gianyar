@@ -12,17 +12,19 @@ class Club extends Model
     use HasFactory, LogsActivity; // Aktifkan pencatatan aktivitas
 
     protected $fillable = [
-        'name', 
-        'slug', 
-        'short_name', 
-        'nickname', 
-        'logo', 
-        'stadium', 
-        'address', 
-        'phone', 
-        'history', 
-        'founded'
-    ];
+    'name', 
+    'status',          // <--- Tambahkan ini
+    'slug', 
+    'short_name', 
+    'nickname', 
+    'logo', 
+    'legal_document',  // <--- Tambahkan ini
+    'stadium', 
+    'address', 
+    'phone', 
+    'history', 
+    'founded'
+];
 
     /**
      * Konfigurasi Log: Mencatat siapa yang mengubah data klub

@@ -2,18 +2,16 @@
 
 namespace App\Models;
 
-// HAPUS atau KOMENTARI baris ini:
-// use Illuminate\Database\Eloquent\Model;
-
-// TAMBAHKAN baris ini:
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Traits\LogsActivity; // <-- Import LogsActivity
+use Spatie\Activitylog\LogOptions;        // <-- Import LogOptions
 
-// Ubah 'extends Model' menjadi 'extends Authenticatable'
 class Player extends Authenticatable
 {
-    use HasFactory;
+    // <-- Tambahkan LogsActivity di sini
+    use HasFactory, LogsActivity; 
 
     protected $fillable = [
         'name',
@@ -37,6 +35,16 @@ class Player extends Authenticatable
         'is_captain' => 'boolean',
         'password' => 'hashed',
     ];
+
+    // --- FITUR LOG AKTIVITAS (AUDIT TRAIL) ---
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->setDescriptionForEvent(fn(string $eventName) => "Data Pemain telah di-{$eventName}");
+    }
 
     public function club(): BelongsTo
     {

@@ -3,7 +3,9 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClubController;       
 use App\Http\Controllers\PlayerAuthController; 
-use App\Models\User; // PENTING: Import Model User
+use App\Models\User;
+// PERBAIKAN: Gunakan controller web, bukan API
+use App\Http\Controllers\ClubRegistrationController; 
 
 /*
 |--------------------------------------------------------------------------
@@ -20,6 +22,9 @@ Route::get('/', function () {
 Route::get('/klub', [ClubController::class, 'index'])->name('clubs.index');
 Route::get('/klub/{slug}', [ClubController::class, 'show'])->name('clubs.show');
 
+// Route Pendaftaran Klub (Web Blade)
+Route::get('/mendaftar', [ClubRegistrationController::class, 'create'])->name('club.register');
+Route::post('/mendaftar', [ClubRegistrationController::class, 'store'])->name('club.store');
 
 // --- 2. PORTAL PEMAIN (AUTH SYSTEM) ---
 Route::prefix('portal-pemain')->name('player.')->group(function () {
