@@ -4,8 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ClubController;       
 use App\Http\Controllers\PlayerAuthController; 
 use App\Models\User;
-// PERBAIKAN: Gunakan controller web, bukan API
 use App\Http\Controllers\ClubRegistrationController; 
+use App\Http\Controllers\HomeController; // <-- Pastikan ini ada di atas
 
 /*
 |--------------------------------------------------------------------------
@@ -14,9 +14,11 @@ use App\Http\Controllers\ClubRegistrationController;
 */
 
 // --- 1. HALAMAN PUBLIK ---
-Route::get('/', function () {
-    return view('welcome');
-});
+// Menggunakan HomeController untuk menampilkan berita dinamis di halaman depan
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// PERBAIKAN: Rute Berita dipindah ke sini agar bisa diakses publik tanpa login
+Route::get('/berita/{slug}', [HomeController::class, 'showNews'])->name('news.show');
 
 // Route Klub (Publik)
 Route::get('/klub', [ClubController::class, 'index'])->name('clubs.index');

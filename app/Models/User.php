@@ -9,12 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Activitylog\Traits\LogsActivity; // <-- Import LogsActivity
-use Spatie\Activitylog\LogOptions;        // <-- Import LogOptions
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class User extends Authenticatable implements FilamentUser
 {
-    // <-- Tambahkan LogsActivity di sini
     use HasApiTokens, HasFactory, Notifiable, LogsActivity; 
 
     protected $fillable = [
@@ -59,6 +58,12 @@ class User extends Authenticatable implements FilamentUser
     public function isClubOperator(): bool
     {
         return $this->role === 'operator' && $this->club_id !== null;
+    }
+
+    // PERBAIKAN: Fungsi gabungan agar Admin dan Super Admin punya hak akses penuh melihat data
+    public function hasFullAccess(): bool
+    {
+        return $this->isSuperAdmin() || $this->isAdmin();
     }
 
     // --- 2. RELASI DATABASE ---

@@ -18,21 +18,19 @@ class PlayerAuthController extends Controller
 
     public function showRegisterForm()
     {
-        // Ambil data klub untuk dropdown, urutkan A-Z
-        $clubs = Club::orderBy('name', 'asc')->get();
+        // Ambil data klub untuk dropdown, urutkan A-Z (Hanya yang Approved)
+        $clubs = Club::where('status', 'approved')->orderBy('name', 'asc')->get();
         return view('player.auth.register', compact('clubs'));
     }
 
     public function register(Request $request)
     {
-        // 1. Validasi Input
+        // 1. Validasi Input (PERBAIKAN: Sesuaikan dengan form yang ada)
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:players',
             'password' => 'required|string|min:6|confirmed',
-            'position' => 'required|string',
-            'club_id' => 'nullable|exists:clubs,id', 
-            'club_dummy' => 'nullable|string|max:255',
+            'club_id' => 'required|exists:clubs,id', // Wajib pilih klub
         ]);
 
         // 2. Simpan Data Pemain (Status default: pending)
@@ -40,14 +38,12 @@ class PlayerAuthController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'position' => $request->position,
-            'club_id' => $request->club_id, // ID Klub pilihan
-            'club_dummy' => $request->club_dummy, // Input manual jika tidak ada di list
-            'status' => 'pending', // Wajib pending agar dicek Manajer dulu
+            'club_id' => $request->club_id, 
+            'status' => 'pending', // Wajib pending agar dicek Admin Klub dulu
+            // Position bisa diisi nanti saat pemain sudah bisa login ke dashboard
         ]);
 
         // 3. Redirect ke Login dengan Pesan Sukses
-        // Kita tidak melakukan auto-login karena statusnya masih pending
         return redirect()->route('player.login')
             ->with('success', 'Registrasi berhasil! Silakan tunggu persetujuan dari Manajer Klub sebelum login.');
     }
@@ -136,30 +132,24 @@ class PlayerAuthController extends Controller
         // 1. Validasi Input
         $request->validate([
             'name' => 'required|string|max:255',
-            'position' => 'required|string',
-            'club_dummy' => 'nullable|string|max:255',
-            'photo' => 'nullable|image|max:2048', // Max 2MB
+            'position' => 'nullable|string', // Boleh null
+            'photo' => 'nullable|image|max:2048', 
             'password' => 'nullable|min:6|confirmed',
         ]);
 
         // 2. Update Data Dasar
         $player->name = $request->name;
-        $player->position = $request->position;
-
-        // Hanya update club_dummy jika pemain belum punya klub resmi
-        // Jika sudah punya club_id, abaikan input club_dummy
-        if (!$player->club_id) {
-            $player->club_dummy = $request->club_dummy;
+        
+        if ($request->filled('position')) {
+            $player->position = $request->position;
         }
 
         // 3. Logika Update Foto
         if ($request->hasFile('photo')) {
-            // Hapus foto lama jika ada dan file-nya eksis di storage
             if ($player->photo && Storage::disk('public')->exists($player->photo)) {
                 Storage::disk('public')->delete($player->photo);
             }
             
-            // Simpan foto baru ke folder public/players/photos
             $path = $request->file('photo')->store('players/photos', 'public');
             $player->photo = $path;
         }
@@ -172,7 +162,6 @@ class PlayerAuthController extends Controller
         // 5. Simpan ke Database
         $player->save();
 
-        // PENTING: Gunakan 'back()' agar kembali ke form edit dengan pesan sukses
         return back()->with('success', 'Profil Anda berhasil diperbarui!');
     }
 }

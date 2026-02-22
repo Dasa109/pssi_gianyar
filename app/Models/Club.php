@@ -13,17 +13,15 @@ class Club extends Model
 
     protected $fillable = [
     'name', 
-    'status',          // <--- Tambahkan ini
     'slug', 
-    'short_name', 
-    'nickname', 
     'logo', 
-    'legal_document',  // <--- Tambahkan ini
     'stadium', 
-    'address', 
+    'short_name',
+    // PASTIKAN 4 KOLOM DI BAWAH INI ADA:
     'phone', 
-    'history', 
-    'founded'
+    'address', 
+    'legal_document', 
+    'status' 
 ];
 
     /**

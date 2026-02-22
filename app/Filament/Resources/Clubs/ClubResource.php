@@ -26,14 +26,17 @@ class ClubResource extends Resource
     /**
      * LOGIC 1: GLOBAL FILTER
      * Memastikan Operator hanya melihat klub mereka sendiri.
+     * PERBAIKAN: Admin dan Super Admin bisa melihat semua data.
      */
     public static function getEloquentQuery(): Builder
     {
         $query = parent::getEloquentQuery();
         $user = auth()->user();
 
-        if ($user && method_exists($user, 'isSuperAdmin') && !$user->isSuperAdmin()) {
-            $query->where('id', $user->club_id);
+        // JIKA BUKAN SUPER ADMIN / ADMIN (Berarti Operator)
+        if ($user && method_exists($user, 'hasFullAccess') && !$user->hasFullAccess()) {
+            $clubId = $user->club_id ?? 0; // Fallback ke 0 jika tidak ada ID
+            $query->where('id', $clubId);
         }
 
         return $query;
@@ -41,8 +44,9 @@ class ClubResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        // Tampilkan jumlah klub yang statusnya pending untuk Admin
-        if (auth()->user() && auth()->user()->isSuperAdmin()) {
+        // Tampilkan jumlah klub yang statusnya pending untuk Admin dan Super Admin
+        $user = auth()->user();
+        if ($user && method_exists($user, 'hasFullAccess') && $user->hasFullAccess()) {
             return static::getModel()::where('status', 'pending')->count();
         }
         return static::getEloquentQuery()->count();
@@ -55,8 +59,9 @@ class ClubResource extends Resource
 
     public static function form(Form $form): Form
     {
-        $isOperator = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && !auth()->user()->isSuperAdmin();
-        $isSuperAdmin = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
+        $user = auth()->user();
+        $hasFullAccess = $user && method_exists($user, 'hasFullAccess') && $user->hasFullAccess();
+        $isOperator = !$hasFullAccess;
 
         return $form
             ->schema([
@@ -89,14 +94,13 @@ class ClubResource extends Resource
                                     ])
                                     ->default('approved')
                                     ->required()
-                                    ->disabled($isOperator) // Hanya admin yang bisa ubah status
-                                    ->visible($isSuperAdmin),
+                                    ->disabled($isOperator) 
+                                    ->visible($hasFullAccess),
 
                                 Forms\Components\RichEditor::make('history')
                                     ->label('Sejarah & Profil')
                                     ->toolbarButtons(['bold', 'italic', 'link', 'bulletList'])
                                     ->columnSpanFull()
-                                    // Boleh kosong saat mendaftar dari React
                                     ->required(false), 
                             ])->columns(2),
                     ])->columnSpan(['lg' => 2]),
@@ -119,13 +123,12 @@ class ClubResource extends Resource
                                     ->disk('public')
                                     ->directory('clubs/documents')
                                     ->columnSpanFull()
-                                    ->visible($isSuperAdmin), // Operator tidak perlu lihat ini saat edit
+                                    ->visible($hasFullAccess), 
 
                                 Forms\Components\TextInput::make('short_name')
                                     ->label('Kode / Singkatan')
                                     ->placeholder('PSG')
                                     ->maxLength(5)
-                                    // Boleh kosong saat dari React, admin nanti yang isi
                                     ->required(false) 
                                     ->live()
                                     ->afterStateUpdated(fn (Forms\Set $set, ?string $state) => $set('short_name', Str::upper($state))),
@@ -153,7 +156,8 @@ class ClubResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $isSuperAdmin = auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
+        $user = auth()->user();
+        $hasFullAccess = $user && method_exists($user, 'hasFullAccess') && $user->hasFullAccess();
 
         return $table
             ->modifyQueryUsing(fn (Builder $query) => $query->withCount('players'))
@@ -195,7 +199,7 @@ class ClubResource extends Resource
                     ->openUrlInNewTab()
                     ->icon('heroicon-o-document-arrow-down')
                     ->color('info')
-                    ->visible($isSuperAdmin),
+                    ->visible($hasFullAccess),
 
                 Tables\Columns\TextColumn::make('players_count')
                     ->label('Jml Pemain')
@@ -209,35 +213,35 @@ class ClubResource extends Resource
                         'approved' => 'Aktif',
                         'rejected' => 'Ditolak',
                     ])
-                    ->visible($isSuperAdmin),
+                    ->visible($hasFullAccess),
             ])
             ->actions([
-                // Tombol Approve untuk Admin
+                // Tombol Approve untuk Admin/Super Admin
                 Tables\Actions\Action::make('approve')
                     ->label('Terima')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->visible(fn (Club $record) => $isSuperAdmin && $record->status === 'pending')
+                    ->visible(fn (Club $record) => $hasFullAccess && $record->status === 'pending')
                     ->action(fn (Club $record) => $record->update(['status' => 'approved'])),
 
-                // Tombol Reject untuk Admin
+                // Tombol Reject untuk Admin/Super Admin
                 Tables\Actions\Action::make('reject')
                     ->label('Tolak')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->visible(fn (Club $record) => $isSuperAdmin && $record->status === 'pending')
+                    ->visible(fn (Club $record) => $hasFullAccess && $record->status === 'pending')
                     ->action(fn (Club $record) => $record->update(['status' => 'rejected'])),
 
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make()
-                    ->visible($isSuperAdmin),
+                    ->visible($hasFullAccess),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make()
-                        ->visible($isSuperAdmin),
+                        ->visible($hasFullAccess),
                 ]),
             ]);
     }
@@ -251,7 +255,8 @@ class ClubResource extends Resource
 
     public static function canCreate(): bool
     {
-        return auth()->user() && method_exists(auth()->user(), 'isSuperAdmin') && auth()->user()->isSuperAdmin();
+        $user = auth()->user();
+        return $user && method_exists($user, 'hasFullAccess') && $user->hasFullAccess();
     }
 
     public static function getPages(): array
